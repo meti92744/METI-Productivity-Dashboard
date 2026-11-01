@@ -837,7 +837,7 @@ html[data-theme="dark"] #darkBtn::after{content:"\263E";transform:translateX(24p
 .shot-stage{width:480px!important;padding:22px 18px 26px!important}
 .shot-stage .shot-head{margin:0 0 18px!important}
 .sh-brand{display:flex;align-items:center;gap:8px;font-size:.8rem;font-weight:600;color:var(--muted);margin-bottom:14px;font-family:var(--font)}
-.sh-brand svg{width:22px;height:19px;display:block}
+.sh-brand .meeg-logo{display:flex;align-items:center;gap:10px}.sh-brand .logo-orb{flex-shrink:0}
 .sh-title{font-family:var(--font);font-size:1.3rem;font-weight:700;letter-spacing:-.02em;line-height:1.2;color:var(--text)}
 .sh-sub{font-family:var(--font);font-size:.78rem;color:var(--muted);margin-top:5px}
 .sh-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
@@ -4319,11 +4319,17 @@ function filters(){
 }
 function restyle(st){
   try{
+    try{var cs=getComputedStyle(document.body);
+      if(cs.backgroundImage&&cs.backgroundImage!=="none"){st.style.backgroundImage=cs.backgroundImage;st.style.backgroundSize="100% 100%";st.style.backgroundRepeat="no-repeat";st.style.backgroundAttachment="scroll";}
+      if(cs.backgroundColor&&cs.backgroundColor!=="rgba(0, 0, 0, 0)")st.style.backgroundColor=cs.backgroundColor;
+    }catch(e){}
     var h=st.querySelector(".shot-head");if(!h||h.dataset.branded)return;
     var t=h.querySelector(".shot-title"),u=h.querySelector(".shot-sub");
     var f=filters();
     h.dataset.branded="1";
-    h.innerHTML='<div class="sh-brand">'+LOGO+'<span>MEEG Productivity</span></div>'
+    var live=document.querySelector(".hdr .meeg-logo");
+    var brand=live?live.outerHTML:(LOGO+'<span>MEEG Productivity</span>');
+    h.innerHTML='<div class="sh-brand">'+brand+'</div>'
       +'<div class="sh-title">'+(t?t.innerHTML:"")+'</div>'
       +'<div class="sh-sub">'+(u?u.innerHTML:"")+'</div>'
       +'<div class="sh-chips">'+(f.length?f.map(function(x){return"<span>"+esc(x)+"</span>"}).join(""):"<span>All data \u00b7 no filters</span>")+"</div>";
