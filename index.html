@@ -121,8 +121,8 @@ html body #splash{transition:opacity .45s ease,transform .45s ease!important}
 .sw-hello::before,.sw-hello::after{content:'';display:inline-block;width:34px;height:1px;vertical-align:middle;margin:0 12px;background:linear-gradient(90deg,transparent,rgba(0,229,212,.75));}
 .sw-hello::after{transform:scaleX(-1);}
 .sw-name{font-family:var(--display);font-size:2.4rem;font-weight:700;letter-spacing:2px;color:#fff;display:flex;flex-wrap:wrap;justify-content:center;text-shadow:0 0 30px rgba(0,229,212,.5);min-height:2.9rem;}
-.sw-name span{display:inline-block;opacity:0;transform:translateY(22px) scale(.8);animation:swLetter .55s cubic-bezier(.34,1.56,.64,1) both;}
-@keyframes swLetter{to{opacity:1;transform:none}}
+.sw-name span{display:inline-block;opacity:1;animation:swLetter .55s cubic-bezier(.34,1.56,.64,1) backwards;}
+@keyframes swLetter{from{opacity:0;transform:translateY(22px) scale(.8)}to{opacity:1;transform:none}}
 .sw-label{font-family:var(--mono);font-size:.66rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#00e5d4;padding:4px 16px;border-radius:999px;border:1px solid rgba(0,229,212,.45);background:rgba(0,229,212,.08);animation:splashFade .5s ease 2s both;}
 .sw-label:empty{display:none;}
 @media(max-width:480px){.sw-name{font-size:1.8rem;letter-spacing:1px;}.splash-brand{font-size:1.8rem;}}
@@ -1942,7 +1942,7 @@ function hideSplash(){
   const t0=Date.now(),MIN=1100,MAX=9000;
   const iv=setInterval(()=>{
     const el=Date.now()-t0;
-    if(el<MIN||(!window._firstDataReady&&el<MAX))return;
+    if(el<MIN||((!window._firstDataReady||window._nameDone===false)&&el<MAX))return;
     clearInterval(iv);
     const f=s.querySelector('.splash-road-fill');
     if(f){const w=getComputedStyle(f).width;f.style.animation='none';f.style.width=w;void f.offsetWidth;f.style.transition='width .2s ease';f.style.width='100%';}
@@ -1957,6 +1957,12 @@ function fillWelcome(){
   [...name].forEach((ch,i)=>{const sp=document.createElement('span');sp.textContent=ch===' '?'\u00A0':ch;sp.style.animationDelay=(0.15+i*0.035)+'s';nm.appendChild(sp);});
   const l=document.getElementById('swLabel');
   if(l){l.textContent=getUserRole(email);l.style.animationDelay=(0.3+name.length*0.035)+'s';}
+  /* hideSplash waits for this, so the name is always fully shown before the splash leaves */
+  window._nameDone=false;
+  const last=nm.lastElementChild;
+  const done=()=>{if(window._nameDone)return;setTimeout(()=>{window._nameDone=true;},900);};
+  if(!last||getComputedStyle(last).animationName==='none'){window._nameDone=true;}
+  else{last.addEventListener('animationend',done,{once:true});setTimeout(done,(0.15+name.length*0.035+0.4)*1000+2500);}
 }
 function toggleDark(){const html=document.documentElement;const isDark=html.getAttribute('data-theme')==='dark';const t=isDark?'light':'dark';html.setAttribute('data-theme',t);const btn=document.getElementById('darkBtn');if(btn){btn.classList.toggle('active',t==='dark');btn.innerHTML=t==='dark'?'🌙 Dark':'☀️ Light';}localStorage.setItem('meeg_theme',t);}
 let autoRefreshEnabled=(function(){try{const v=localStorage.getItem('meeg_autorefresh');return v===null?true:v==='1';}catch(e){return true;}})();
@@ -3955,7 +3961,7 @@ function shootWebScrollTop(){
 function startApp(){renderUserChip(false);
   if(!document.getElementById('splash')&&window._splashTpl)document.body.insertAdjacentHTML('afterbegin',window._splashTpl);
   fillWelcome();
-  const savedTheme=localStorage.getItem('meeg_theme')||(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',savedTheme);const btn=document.getElementById('darkBtn');if(btn){btn.classList.toggle('active',savedTheme==='dark');btn.innerHTML=savedTheme==='dark'?'🌙 Dark':'☀️ Light';}applyAutoRefreshUI();hideSplash();loadData();startVersionPolling();(function _q(n){if(window._firstDataReady||n>40)fetchQualityData(true);else setTimeout(()=>_q(n+1),300);})(0);startQualityPolling();startUsersWatch();
+  const savedTheme=localStorage.getItem('meeg_theme')||(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',savedTheme);const btn=document.getElementById('darkBtn');if(btn){btn.classList.toggle('active',savedTheme==='dark');btn.innerHTML=savedTheme==='dark'?'🌙 Dark':'☀️ Light';}applyAutoRefreshUI();hideSplash();setTimeout(loadData,350);startVersionPolling();(function _q(n){if(window._firstDataReady||n>40)fetchQualityData(true);else setTimeout(()=>_q(n+1),300);})(0);startQualityPolling();startUsersWatch();
 }
 function _bootApp(){
   initLoginDodge();
