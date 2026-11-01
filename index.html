@@ -4350,14 +4350,15 @@ function restyle(st){
     }catch(e){}
     var h=st.querySelector(".shot-head");if(!h||h.dataset.branded)return;
     var t=h.querySelector(".shot-title"),u=h.querySelector(".shot-sub");
-    var f=filters();
+    var own=(st.dataset.chips!==undefined&&st.dataset.chips!=='');
+    var f=own?JSON.parse(st.dataset.chips):filters();
     h.dataset.branded="1";
     var live=document.querySelector(".hdr .meeg-logo");
     var brand=live?live.outerHTML:(LOGO+'<span>MEEG Productivity</span>');
     h.innerHTML='<div class="sh-brand">'+brand+'</div>'
       +'<div class="sh-title">'+(t?t.innerHTML:"")+'</div>'
       +'<div class="sh-sub">'+(u?u.innerHTML:"")+'</div>'
-      +'<div class="sh-chips">'+(f.length?f.map(function(x){return"<span>"+esc(x)+"</span>"}).join(""):"<span>All data \u00b7 no filters</span>")+"</div>";
+      +'<div class="sh-chips">'+(f.length?f.map(function(x){return"<span>"+esc(x)+"</span>"}).join(""):"<span>"+(own?"No extra filters":"All data \u00b7 no filters")+"</span>")+"</div>";
     var g=st.querySelector('div[style*="grid-template-columns"]');
     if(g){g.style.gridTemplateColumns="1fr";g.style.gap="14px"}
   }catch(e){console.warn("shot header",e)}
@@ -4435,6 +4436,8 @@ function up(){var h=new Date().getHours(),t=h<12?'Good morning':h<18?'Good after
 .an-t td{max-width:none!important;overflow:visible!important}
 .an-t th.c,.an-t td.c{text-align:center}
 .an-t tr.tot td{font-weight:700;background:var(--primary-light)}
+.an-mix{display:flex;height:10px;min-width:72px;border-radius:6px;overflow:hidden;background:var(--border-light)}.an-mix i{display:block;height:100%}
+.an-leg{display:flex;flex-wrap:wrap;gap:6px 14px;margin:0 2px 10px;font-size:.72rem;color:var(--text-soft)}.an-leg span{display:inline-flex;align-items:center;gap:5px}.an-leg i{width:9px;height:9px;border-radius:50%;display:inline-block}
 .an-rg{display:inline-flex;gap:4px}
 .an-rb{cursor:pointer;border:0;border-radius:999px;background:var(--elevated);color:var(--text-soft);padding:5px 11px;font:500 .72rem var(--font);transition:all .15s}
 .an-rb:hover{transform:scale(1.05)}
@@ -4490,6 +4493,10 @@ function anIsSV(){return (ANALYSIS_USERS[anMe()]||[])[1]==='SV';}
 function anLocked(id){const l=anLog[id];return !!(l&&l.analyst&&l.analyst!==anMyName()&&!anIsSV());}   // a rating belongs to who made it (SV can edit any)
 const RATE_W={Excellent:1,Good:.75,Average:.5,Poor:0};                               // Score = Σ(rating×weight) ÷ tasks
 const RATES=['Excellent','Good','Average','Poor'];
+const RATE_COL={Excellent:'#16a34a',Good:'#2563eb',Average:'#f59e0b',Poor:'#dc2626'};
+function anMix(c){const T=RATES.reduce((s,k)=>s+(c[k]||0),0);if(!T)return '';
+  return '<div class="an-mix" title="'+RATES.map(k=>k+' '+Math.round((c[k]||0)/T*100)+'%').join(' · ')+'">'+RATES.filter(k=>c[k]).map(k=>'<i style="width:'+(c[k]/T*100).toFixed(1)+'%;background:'+RATE_COL[k]+'"></i>').join('')+'</div>';}
+function anLegend(){return '<div class="an-leg">'+RATES.map(k=>'<span><i style="background:'+RATE_COL[k]+'"></i>'+k+'</span>').join('')+'</div>';}
 let anView='tasks',anGroup='QC',anLog={},anLogLoaded=false,anF={from:'',to:'',lab:new Set(),qc:new Set(),q:'',type:new Set(),pass:new Set(),status:'',shift:'',mine:false,chart:''};
 function anCol(n){return hdrs.findIndex(h=>h.toLowerCase()===n.toLowerCase());}
 function anYmd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -4729,6 +4736,15 @@ async function anShot(btn){
     await loadLib('h2c');if(document.fonts&&document.fonts.ready)await document.fonts.ready;
     const bg=(getComputedStyle(document.documentElement).getPropertyValue('--bg')||'').trim()||'#eef2f7';
     stage=document.createElement('div');stage.className='shot-stage';stage.style.background=bg;
+    {const chips=[];
+      if(anF.shift)chips.push('Shift '+anF.shift);
+      if(anF.lab.size)chips.push('Labeler: '+[...anF.lab].join(', '));
+      if(anF.qc.size)chips.push('QTC: '+[...anF.qc].join(', '));
+      if(anF.type.size)chips.push([...anF.type].join(' + '));
+      if(anF.pass.size)chips.push('Pass: '+[...anF.pass].join(', '));
+      if(anF.mine)chips.push('My tasks');
+      if(anF.q)chips.push('Search: '+anF.q);
+      stage.dataset.chips=JSON.stringify(chips);}
     const rng=(anF.from||anF.to)?(anF.from||'…')+' → '+(anF.to||'…'):'All dates';
     stage.innerHTML=`<div class="shot-head"><div class="shot-title">⭐ MEEG Analysis — Ratings by ${anGroup==='QC'?'QTC':'Labeler'}</div><div class="shot-sub">${esc(rng)}${anF.shift?' · Shift '+anF.shift:''} · ${esc(new Date().toLocaleString())}</div></div>`;
     const clone=src.cloneNode(true);clone.removeAttribute('id');
@@ -4764,12 +4780,12 @@ function renderAnalysis(mc){
   }else if(anView==='ratings'){
     const rated=tasks.filter(t=>anLog[t.id]&&(anLog[t.id].lr||anLog[t.id].qr));meta=rated.length+' rated tasks';
     body=anDateBar()+`<div class="an-bar"><label>Group by</label><button class="preset${anGroup==='QC'?' on':''}" onclick="anGroup='QC';anSetView('ratings')">QTC</button><button class="preset${anGroup==='Labeler'?' on':''}" onclick="anGroup='Labeler';anSetView('ratings')">Labeler</button><label>Shift</label>${['','M','N','ON'].map(v=>`<button class="preset${anF.shift===v?' on':''}" onclick="anSet('shift','${v}')">${v||'All'}</button>`).join('')}<button class="btn" onclick="anShot(this)">📸 Screenshot</button></div>`;
-    body+='<div id="anRatingsBox">';['Lidar','Lane Line'].forEach(type=>{const rows=rated.filter(t=>t.type===type),g={};
+    body+='<div id="anRatingsBox">'+anLegend();['Lidar','Lane Line'].forEach(type=>{const rows=rated.filter(t=>t.type===type),g={};
       rows.forEach(t=>{const nm=anGroup==='QC'?t.qc:t.lab,rt=anGroup==='QC'?anLog[t.id].qr:anLog[t.id].lr;if(!rt)return;(g[nm]=g[nm]||{})[rt]=(g[nm][rt]||0)+1;});
       const names=Object.keys(g).sort((a,b)=>anScore(g[b])-anScore(g[a]));const tot={};
-      body+=`<div class="sec" style="margin:0 0 12px"><div class="sec-hd"><div class="sec-t">${type}</div><div class="sec-m">${names.reduce((s,n)=>s+RATES.reduce((x,k)=>x+(g[n][k]||0),0),0)} tasks</div></div><div class="tbl-w"><table class="an-t"><tr><th>${anGroup==='QC'?'QTC':anGroup}</th>${RATES.map(k=>`<th class="c">${k}</th>`).join('')}<th class="c">Total</th><th class="c">Score %</th></tr>`+
-        names.map(n=>{const c=g[n],T=RATES.reduce((s,k)=>s+(c[k]||0),0);RATES.forEach(k=>tot[k]=(tot[k]||0)+(c[k]||0));return `<tr><td>${esc(n)}</td>${RATES.map(k=>`<td class="c">${c[k]||0}</td>`).join('')}<td class="c"><b>${T}</b></td><td class="c">${anScore(c).toFixed(1)}%</td></tr>`;}).join('')+
-        (names.length?`<tr class="tot"><td>TOTAL</td>${RATES.map(k=>`<td class="c">${tot[k]||0}</td>`).join('')}<td class="c">${RATES.reduce((s,k)=>s+(tot[k]||0),0)}</td><td class="c">${anScore(tot).toFixed(1)}%</td></tr>`:'<tr><td colspan="7" style="text-align:center;color:var(--muted)">No rated tasks</td></tr>')+'</table></div></div>';});body+='</div><div id="anTrendBox">'+anChart(rated)+'</div>';}else if(anView==='analysts'){
+      body+=`<div class="sec" style="margin:0 0 12px"><div class="sec-hd"><div class="sec-t">${type}</div><div class="sec-m">${names.reduce((s,n)=>s+RATES.reduce((x,k)=>x+(g[n][k]||0),0),0)} tasks</div></div><div class="tbl-w"><table class="an-t"><tr><th>${anGroup==='QC'?'QTC':anGroup}</th>${RATES.map(k=>`<th class="c">${k}</th>`).join('')}<th class="c">Total</th><th class="c">Score %</th><th class="c">Mix</th></tr>`+
+        names.map(n=>{const c=g[n],T=RATES.reduce((s,k)=>s+(c[k]||0),0);RATES.forEach(k=>tot[k]=(tot[k]||0)+(c[k]||0));return `<tr><td>${esc(n)}</td>${RATES.map(k=>`<td class="c">${c[k]||0}</td>`).join('')}<td class="c"><b>${T}</b></td><td class="c">${anScore(c).toFixed(1)}%</td><td>${anMix(c)}</td></tr>`;}).join('')+
+        (names.length?`<tr class="tot"><td>TOTAL</td>${RATES.map(k=>`<td class="c">${tot[k]||0}</td>`).join('')}<td class="c">${RATES.reduce((s,k)=>s+(tot[k]||0),0)}</td><td class="c">${anScore(tot).toFixed(1)}%</td><td>${anMix(tot)}</td></tr>`:'<tr><td colspan="8" style="text-align:center;color:var(--muted)">No rated tasks</td></tr>')+'</table></div></div>';});body+='</div><div id="anTrendBox">'+anChart(rated)+'</div>';}else if(anView==='analysts'){
     const done=tasks.filter(t=>anLog[t.id]);meta=done.length+' analyzed';const per={};const days={};
     done.forEach(t=>{const l=anLog[t.id],a=l.analyst||'—';per[a]=per[a]||{Lidar:0,'Lane Line':0,issues:0,total:0};per[a][t.type]++;per[a].total++;if(l.issue)per[a].issues++;const d=l.date||t.day;(days[d]=days[d]||{})[a]=(days[d][a]||0)+1;});
     const an=Object.keys(per).sort();
