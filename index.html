@@ -850,7 +850,7 @@ html[data-theme="dark"] #darkBtn::after{content:"\263E";transform:translateX(24p
 .shot-stage span[style*="border:1.5px"],.shot-stage table span[style*="padding:3px"]{padding:3px 8px!important;font-size:.7rem!important}
 .shot-stage table th:first-child,.shot-stage table td:first-child{padding-left:12px!important}
 .shot-stage .qtot-wrap{padding:6px 12px 14px!important;gap:22px!important}
-.shot-stage .sec{background:var(--card)!important;box-shadow:none!important}
+.shot-stage .sec{background:var(--g-bg,var(--card))!important;border:1px solid var(--g-brd,var(--border))!important;border-radius:22px!important;box-shadow:var(--g-sh,none)!important}.shot-stage :is(.dcard,.catcard,.podium-item){background:var(--g-bg2,var(--card))!important;border:1px solid var(--g-brd,var(--border))!important;border-radius:16px!important}.shot-stage svg{min-width:0!important;max-width:100%}
 .shot-stage .sec .sec-hd,.shot-stage .qtot-wrap,.shot-stage .qtot-wrap div,.shot-stage .qtot-wrap table,.shot-stage .qtot-wrap thead,.shot-stage .qtot-wrap tbody,.shot-stage .qtot-wrap tr,.shot-stage .qtot-wrap th,.shot-stage .qtot-wrap td{background:transparent!important;box-shadow:none!important}
 @media(max-width:700px){.pn{top:auto;height:88%;width:100%;border-radius:24px 24px 0 0;border-left:0;transform:translateY(104%)}.pn.on{transform:none}}
 .loc-section{display:flex;flex-direction:column;gap:32px}.loc-section>*{margin:0!important}
@@ -3197,7 +3197,7 @@ function _startPrefetch(){
     const p=_fetchMainText();p.catch(()=>{});
     window._mainPre={t:Date.now(),p:p,b:_fetchBackup()};
     /* saved copy from last time: read + parse it now (parsing runs in a worker) so it is ready the instant the login check finishes */
-    window._cachePre=idbGet('csv').then(c=>{if(!(c&&c.v===AUTH_VER&&c.text))return null;return parseCSVAsync(c.text).then(table=>({text:c.text,table})).catch(()=>({text:c.text}));}).catch(()=>null);
+    window._cachePre=idbGet('csv').then(c=>{if(!(c&&c.v===AUTH_VER&&c.text))return null;return parseCSVAsync(c.text).then(table=>({text:c.text,table,ts:c.ts})).catch(()=>({text:c.text,ts:c.ts}));}).catch(()=>null);
   }catch(e){}
 }
 function loadData(){
@@ -3210,7 +3210,7 @@ function loadData(){
   }
   if(!_cacheTried&&rawRows.length===0){
     _cacheTried=true;
-    (window._cachePre||idbGet('csv').then(c=>(c&&c.v===AUTH_VER&&c.text)?{text:c.text}:null)).then(c=>{window._cachePre=null;if(c&&c.text&&rawRows.length===0)onCsvData(c.text,true,c.table);}).catch(()=>{});
+    (window._cachePre||idbGet('csv').then(c=>(c&&c.v===AUTH_VER&&c.text)?{text:c.text,ts:c.ts}:null)).then(c=>{window._cachePre=null;if(c&&c.text&&rawRows.length===0)onCsvData(c.text,true,c.table,c.ts);}).catch(()=>{});
   }
   const _pre=(window._mainPre&&Date.now()-window._mainPre.t<90000)?window._mainPre:null;window._mainPre=null;
   const mainP=_pre?_pre.p:_fetchMainText();
@@ -3228,21 +3228,21 @@ function loadData(){
     const rb=document.getElementById('refreshBtn');if(rb)rb.disabled=false;setSyncActive(false);
     _lastCsvHash=hh;
     setTimeout(()=>{idbSet('csv',{v:AUTH_VER,ts:Date.now(),text:txt});},2000);   // cache AFTER the screen is up, and only when the data really changed
-    onCsvTable(table);
+    setStale(false);onCsvTable(table);
   }).catch(e=>{
     setSyncActive(false);setTrafficLight('red');if(b)b.disabled=false;
-    if(rawRows.length>0){showToast('⚠️ Could not refresh — showing the last loaded data');}
+    if(rawRows.length>0){setStale(true);}
     else showErr('Failed to load data: '+e.message);
   });
 }
 function _csvUnchanged(){
   /* PATCH #5: data hasn't actually changed — skip the full rebuild, just refresh the "updated" timestamp */
   const b=document.getElementById('refreshBtn');if(b)b.disabled=false;setSyncActive(false);
-  lastUpdateTs=Date.now();updateRelativeTime();setTrafficLight('green');
+  lastUpdateTs=Date.now();setStale(false);updateRelativeTime();setTrafficLight('green');
   if(autoRefreshTimer)clearInterval(autoRefreshTimer);autoRefreshTimer=null;
   if(autoRefreshEnabled)autoRefreshTimer=setInterval(loadData,REFRESH_INTERVAL*1000);
 }
-function onCsvData(text,fromCache,preTable){
+function onCsvData(text,fromCache,preTable,cacheTs){
   if(!fromCache){const b=document.getElementById('refreshBtn');if(b)b.disabled=false;setSyncActive(false);}
   fastHash(text).then(h=>{
     const newHash=h+'|';
@@ -3251,14 +3251,14 @@ function onCsvData(text,fromCache,preTable){
       return;
     }
     _lastCsvHash=newHash;
-    return (preTable?Promise.resolve(preTable):parseCSVAsync(text)).then(t=>{onCsvTable(t);if(fromCache){setTrafficLight('yellow');showToast('⚡ Showing saved data — updating…');}});
+    return (preTable?Promise.resolve(preTable):parseCSVAsync(text)).then(t=>{if(fromCache&&cacheTs)window._cacheTs=cacheTs;onCsvTable(t);if(fromCache){setTrafficLight('yellow');showToast('⚡ Showing saved data — updating…');}});
   }).catch(e=>showErr('Parse failed: '+e.message));
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&window._pendingRefresh){window._pendingRefresh=false;try{loadData();}catch(e){}}});
 function cairoToday(){try{return new Date().toLocaleDateString('en-CA',{timeZone:'Africa/Cairo'});}catch(e){const n=new Date();return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');}}
 function onCsvTable(table){
   if(!table.length){showErr('No data returned.');return;}hdrs=table[0].map(h=>String(h||'').trim());const hLower=hdrs.map(h=>h.toLowerCase());sIdx={};["Shift","Unit","Qtc Name","Yubikey Email","Labeler Name","Pc No","Modality","Queue Name","Location","Pass"].forEach(name=>{const i=hLower.indexOf(name.toLowerCase());if(i>=0)sIdx[name]=i;});tsIdx=hLower.findIndex(h=>h==='timestamp');if(tsIdx<0)tsIdx=hLower.findIndex(h=>h==='created at');if(tsIdx<0)tsIdx=hLower.findIndex(h=>h==='date');if(tsIdx<0)tsIdx=hLower.findIndex(h=>h.includes('date'));locColIdx=hLower.findIndex(h=>h==='location');if(locColIdx<0)locColIdx=hLower.findIndex(h=>h==='unit');if(locColIdx<0)locColIdx=hLower.findIndex(h=>h==='site');rawRows=[];const skippedShift={};for(let ri=1;ri<table.length;ri++){const rowRaw=table[ri];if(!rowRaw||!rowRaw.length)continue;table[ri]=null;const row=rowRaw;for(let ci=0;ci<hdrs.length;ci++){const v=row[ci];row[ci]=v===undefined?'':String(v).trim();}row.length=hdrs.length;if(row.every(c=>c===''))continue;const sci=sIdx['Shift'];if(sci!==undefined){const sv=String(row[sci]||'').replace(/\s+/g,' ').trim().toLowerCase();if(!ALL_SHIFTS.some(a=>sv===a)){const kk=sv||'(empty)';skippedShift[kk]=(skippedShift[kk]||0)+1;continue;}}normRow(row);rawRows.push(row);}window._skippedShift=skippedShift;{const ks=Object.keys(skippedShift),tot=ks.reduce((a,k)=>a+skippedShift[k],0);if(tot>0){console.warn('Rows skipped (unknown Shift value):',skippedShift);const sig=JSON.stringify(skippedShift);if(window._skipSig!==sig){window._skipSig=sig;showToast('⚠️ '+tot+' row(s) skipped — unknown Shift: '+ks.slice(0,4).map(k=>'"'+k+'" ×'+skippedShift[k]).join(', ')+(ks.length>4?' …':''));}}}
-sOpts={};["Shift","Unit","Qtc Name","Yubikey Email","Labeler Name","Pc No","Modality","Queue Name","Location","Pass"].forEach(name=>{const ci=sIdx[name];if(ci===undefined)return;const set=new Set();rawRows.forEach(r=>{const v=String(r[ci]||'').trim();if(v)set.add(v);});sOpts[name]=[...set].sort();});const dateSet=new Set();rawRows.forEach(r=>{const d=extractDate(r[tsIdx]);if(d)dateSet.add(d);});sOpts['_dates']=[...dateSet].sort().reverse();const locSet=new Set();if(locColIdx>=0)rawRows.forEach(r=>{const v=String(r[locColIdx]||'').trim();if(v)locSet.add(v);});locations=[...locSet].sort();todayStr=cairoToday();document.getElementById('todayLabel').textContent=todayStr;lastUpdateTs=Date.now();updateRelativeTime();setTrafficLight('green');window._firstDataReady=true;document.getElementById('totalBadge').textContent=rawRows.length+' rows';SC.forEach(s=>{if(!sel[s.key])sel[s.key]=new Set();});if(!_filtersRestored){restoreFilters();_filtersRestored=true;}buildStrip();buildTabs();applyAll();if(autoRefreshTimer)clearInterval(autoRefreshTimer);autoRefreshTimer=null;if(autoRefreshEnabled)autoRefreshTimer=setInterval(loadData,REFRESH_INTERVAL*1000);applyAutoRefreshUI();if(cmpMode)populateCmpSelects();try{loadArchiveIds();}catch(e){}
+sOpts={};["Shift","Unit","Qtc Name","Yubikey Email","Labeler Name","Pc No","Modality","Queue Name","Location","Pass"].forEach(name=>{const ci=sIdx[name];if(ci===undefined)return;const set=new Set();rawRows.forEach(r=>{const v=String(r[ci]||'').trim();if(v)set.add(v);});sOpts[name]=[...set].sort();});const dateSet=new Set();rawRows.forEach(r=>{const d=extractDate(r[tsIdx]);if(d)dateSet.add(d);});sOpts['_dates']=[...dateSet].sort().reverse();const locSet=new Set();if(locColIdx>=0)rawRows.forEach(r=>{const v=String(r[locColIdx]||'').trim();if(v)locSet.add(v);});locations=[...locSet].sort();todayStr=cairoToday();document.getElementById('todayLabel').textContent=todayStr;lastUpdateTs=window._cacheTs||Date.now();window._cacheTs=null;updateRelativeTime();setTrafficLight('green');window._firstDataReady=true;document.getElementById('totalBadge').textContent=rawRows.length+' rows';SC.forEach(s=>{if(!sel[s.key])sel[s.key]=new Set();});if(!_filtersRestored){restoreFilters();_filtersRestored=true;}buildStrip();buildTabs();applyAll();if(autoRefreshTimer)clearInterval(autoRefreshTimer);autoRefreshTimer=null;if(autoRefreshEnabled)autoRefreshTimer=setInterval(loadData,REFRESH_INTERVAL*1000);applyAutoRefreshUI();if(cmpMode)populateCmpSelects();try{loadArchiveIds();}catch(e){}
 }
 const _MONTH_NAMES={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
 function extractDate(v){
@@ -3284,8 +3284,33 @@ function extractDate(v){
 }
 function rDate(r){if(tsIdx<0)return'';const v=String(r[tsIdx]||'').trim();return extractDate(v)||'';}
 function _now(){const n=new Date();return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0')+' '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');}
+/* ---- stale-data banner: shown only while a refresh is failing / offline, so old numbers are never mistaken for live ones ---- */
+let _stale=false;
+(function(){const st=document.createElement('style');st.textContent='.stale-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 16px 0;padding:10px 16px;border-radius:16px;background:rgba(245,158,11,.14);border:1px solid rgba(245,158,11,.55);color:var(--text);font-size:.78rem;font-family:var(--font)}.stale-bar button{margin-left:auto;border:0;border-radius:999px;padding:6px 14px;font-weight:700;font-size:.74rem;cursor:pointer;background:#f59e0b;color:#fff}';document.head.appendChild(st);})();
+function staleText(){
+  const hm=lastUpdateTs?new Date(lastUpdateTs).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'—';
+  const m=lastUpdateTs?Math.floor((Date.now()-lastUpdateTs)/60000):0;
+  const ago=!lastUpdateTs?'':(m<1?'just now':(m<60?m+'m ago':Math.floor(m/60)+'h ago'));
+  return (navigator.onLine===false?'📡 You are offline':'⚠️ Could not refresh the data')+' — these numbers are from <b>'+hm+'</b>'+(ago?' ('+ago+')':'')+'. Retrying automatically.';
+}
+function staleRefresh(){const b=document.getElementById('staleBar');if(b&&_stale){const t=b.querySelector('.stale-t');if(t)t.innerHTML=staleText();}}
+function setStale(on){
+  _stale=!!on;
+  let b=document.getElementById('staleBar');
+  if(!on){if(b)b.remove();const el=document.getElementById('lastUpdated');if(el)el.style.color='';return;}
+  if(!b){
+    const mc=document.getElementById('mainContent');if(!mc||!mc.parentNode)return;
+    b=document.createElement('div');b.id='staleBar';b.className='stale-bar';
+    b.innerHTML='<span class="stale-t"></span><button type="button" onclick="loadData()">Retry now</button>';
+    mc.parentNode.insertBefore(b,mc);
+  }
+  b.querySelector('.stale-t').innerHTML=staleText();
+  const el=document.getElementById('lastUpdated');if(el)el.style.color='var(--danger)';
+}
+window.addEventListener('offline',()=>{if(rawRows.length>0)setStale(true);});
+window.addEventListener('online',()=>{try{loadData();}catch(e){}});
 let lastUpdateTs=null;
-function updateRelativeTime(){const el=document.getElementById('lastUpdated');if(!el||!lastUpdateTs)return;const diff=Math.floor((Date.now()-lastUpdateTs)/1000);let txt;if(diff<10)txt='just now';else if(diff<60)txt=diff+'s ago';else if(diff<3600)txt=Math.floor(diff/60)+'m ago';else txt=Math.floor(diff/3600)+'h ago';el.textContent=txt;}
+function updateRelativeTime(){const el=document.getElementById('lastUpdated');if(!el||!lastUpdateTs)return;const diff=Math.floor((Date.now()-lastUpdateTs)/1000);let txt;if(diff<10)txt='just now';else if(diff<60)txt=diff+'s ago';else if(diff<3600)txt=Math.floor(diff/60)+'m ago';else txt=Math.floor(diff/3600)+'h ago';el.textContent=txt;try{el.title=new Date(lastUpdateTs).toLocaleString();el.style.color=_stale?'var(--danger)':'';}catch(e){}staleRefresh();}
 setInterval(updateRelativeTime,10000);
 window.addEventListener('scroll',()=>{const b=document.getElementById('scrollTopBtn');if(!b)return;b.classList.toggle('show',window.scrollY>400);});
 function setSyncActive(v){const b=document.getElementById('syncBar');if(b)b.classList.toggle('active',v);}
@@ -4708,7 +4733,13 @@ async function anShot(btn){
     stage.innerHTML=`<div class="shot-head"><div class="shot-title">⭐ MEEG Analysis — Ratings by ${anGroup==='QC'?'QTC':'Labeler'}</div><div class="shot-sub">${esc(rng)}${anF.shift?' · Shift '+anF.shift:''} · ${esc(new Date().toLocaleString())}</div></div>`;
     const clone=src.cloneNode(true);clone.removeAttribute('id');
     clone.querySelectorAll('.tbl-w').forEach(e=>{e.style.maxHeight='none';e.style.overflow='visible';});
-    stage.appendChild(clone);document.body.appendChild(stage);
+    stage.appendChild(clone);
+    const trSrc=document.getElementById('anTrendBox');
+    if(trSrc){const cs=getComputedStyle(document.body),tc=trSrc.cloneNode(true);tc.removeAttribute('id');
+      tc.querySelectorAll('.an-bar').forEach(e=>e.remove());   /* the dropdown is interactive only */
+      tc.innerHTML=tc.innerHTML.replace(/var\((--[\w-]+)\)/g,(m,v)=>((cs.getPropertyValue(v)||'').trim()||m));   /* CSS variables don't survive inside the SVG image html2canvas builds */
+      stage.appendChild(tc);}
+    document.body.appendChild(stage);
     await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
     const scale=Math.min(5,Math.max(3,(window.devicePixelRatio||1)*2));
     const canvas=await html2canvas(stage,{scale,backgroundColor:bg,useCORS:true,logging:false,scrollX:0,scrollY:0,onclone:d=>{const x=d.querySelector('.shot-stage');if(x){x.style.left='0';x.style.top='0';}}});
@@ -4738,7 +4769,7 @@ function renderAnalysis(mc){
       const names=Object.keys(g).sort((a,b)=>anScore(g[b])-anScore(g[a]));const tot={};
       body+=`<div class="sec" style="margin:0 0 12px"><div class="sec-hd"><div class="sec-t">${type}</div><div class="sec-m">${names.reduce((s,n)=>s+RATES.reduce((x,k)=>x+(g[n][k]||0),0),0)} tasks</div></div><div class="tbl-w"><table class="an-t"><tr><th>${anGroup==='QC'?'QTC':anGroup}</th>${RATES.map(k=>`<th class="c">${k}</th>`).join('')}<th class="c">Total</th><th class="c">Score %</th></tr>`+
         names.map(n=>{const c=g[n],T=RATES.reduce((s,k)=>s+(c[k]||0),0);RATES.forEach(k=>tot[k]=(tot[k]||0)+(c[k]||0));return `<tr><td>${esc(n)}</td>${RATES.map(k=>`<td class="c">${c[k]||0}</td>`).join('')}<td class="c"><b>${T}</b></td><td class="c">${anScore(c).toFixed(1)}%</td></tr>`;}).join('')+
-        (names.length?`<tr class="tot"><td>TOTAL</td>${RATES.map(k=>`<td class="c">${tot[k]||0}</td>`).join('')}<td class="c">${RATES.reduce((s,k)=>s+(tot[k]||0),0)}</td><td class="c">${anScore(tot).toFixed(1)}%</td></tr>`:'<tr><td colspan="7" style="text-align:center;color:var(--muted)">No rated tasks</td></tr>')+'</table></div></div>';});body+='</div>'+anChart(rated);}else if(anView==='analysts'){
+        (names.length?`<tr class="tot"><td>TOTAL</td>${RATES.map(k=>`<td class="c">${tot[k]||0}</td>`).join('')}<td class="c">${RATES.reduce((s,k)=>s+(tot[k]||0),0)}</td><td class="c">${anScore(tot).toFixed(1)}%</td></tr>`:'<tr><td colspan="7" style="text-align:center;color:var(--muted)">No rated tasks</td></tr>')+'</table></div></div>';});body+='</div><div id="anTrendBox">'+anChart(rated)+'</div>';}else if(anView==='analysts'){
     const done=tasks.filter(t=>anLog[t.id]);meta=done.length+' analyzed';const per={};const days={};
     done.forEach(t=>{const l=anLog[t.id],a=l.analyst||'—';per[a]=per[a]||{Lidar:0,'Lane Line':0,issues:0,total:0};per[a][t.type]++;per[a].total++;if(l.issue)per[a].issues++;const d=l.date||t.day;(days[d]=days[d]||{})[a]=(days[d][a]||0)+1;});
     const an=Object.keys(per).sort();
