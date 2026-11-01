@@ -2616,13 +2616,38 @@ function loadQualityStore(){
 function saveQualityStore(){try{localStorage.setItem(QUALITY_STORE_KEY,JSON.stringify(qualityStore));}catch(e){}}
 
 // fetches data from the "Export" tab (by name, not gid, so it works even if the tab is recreated) and merges it on top of the saved archive
+/* ---- Quality auto-sync: every device re-reads the Export tab by itself, so a new import shows up everywhere without Reset + Refresh ---- */
+const QUALITY_AUTO_NEW_WEEK=true;   // true: when the Export tab holds a NEWER week than the saved data, the old week is replaced automatically (same as pressing Reset first)
+const QUALITY_POLL_MS=30000;        // how often every open device checks the Export tab
+let _qHash='';
+function qHash(t){let h=2166136261;for(let i=0;i<t.length;i++){h^=t.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(36)+':'+t.length;}
+/* true when the Export tab's main week is newer than the main week of what this device has saved */
+function qIsNewWeek(table,aidIdx,adateIdx,store){
+  if(!QUALITY_AUTO_NEW_WEEK||adateIdx<0)return false;
+  const wk=d=>{const ds=extractDate(d);return ds?mondayOf(ds).getTime():null;};
+  const dom=a=>{const c={};a.forEach(t=>{if(t)c[t]=(c[t]||0)+1;});let b=null,bn=-1;Object.keys(c).forEach(k=>{if(c[k]>bn){bn=c[k];b=+k;}});return b;};
+  const exp=dom(table.slice(1).map(r=>(r&&String(r[aidIdx]||'').trim())?wk(r[adateIdx]):null));
+  const st=dom(Object.values(store).map(rc=>(rc&&rc.actualDate)?wk(rc.actualDate):null));
+  return !!(exp&&st&&exp>st);
+}
+function startQualityPolling(){
+  if(window._qPoll)return;window._qPoll=true;
+  const go=()=>{if(!document.hidden&&navigator.onLine!==false)fetchQualityData(true);};
+  setInterval(go,QUALITY_POLL_MS);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)go();});
+  window.addEventListener('focus',go);
+  window.addEventListener('online',go);
+}
 function fetchQualityData(silent){
   if(qualityLoading)return;
-  loadTeamsMap();
+  if(!silent||!window._qFirstDone)loadTeamsMap();
   qualityLoading=true;
   const btn=document.getElementById('qualityRefreshBtn');if(btn)btn.disabled=true;
   const url=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(EXPORT_SHEET_NAME)}`;
-  fetch(url).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.text();}).then(txt=>{
+  fetch(url+'&_v='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.text();}).then(txt=>{
+    const _h=qHash(txt);
+    if(silent&&_h===_qHash){qualityLoading=false;if(btn)btn.disabled=false;return;}   // nothing changed in the Export tab — skip all the work
+    const _firstPoll=(_qHash==='');
     const table=parseCSV(txt).filter(r=>r&&r.length&&!(r.length===1&&String(r[0]||'').trim()===''));
     qualityLoading=false;if(btn)btn.disabled=false;
     if(!table.length){if(!silent)showToast('⚠️ Export sheet is empty');return;}
@@ -2633,6 +2658,8 @@ function fetchQualityData(silent){
     const aemailIdx=(()=>{let i=qhLower.findIndex(h=>h==='actual email');if(i<0)i=qhLower.findIndex(h=>h==='yubikey email');return i;})();
     const metricIdx={artifacts:qhLower.findIndex(h=>h==='artifacts'),attribute:qhLower.findIndex(h=>h==='attribute'),tvaF1:qhLower.findIndex(h=>h==='tva f1'),totalAccuracy:qhLower.findIndex(h=>h==='total accuracy')};
     if(aidIdx<0){showToast('⚠️ "Actual ID" column not found in the Export tab');return;}
+    const newWeek=qIsNewWeek(table,aidIdx,adateIdx,qualityStore);
+    if(newWeek)qualityStore={};   // newer week in Export -> start clean, exactly like pressing Reset (New Week)
     const now=Date.now();let added=0;
     for(let ri=1;ri<table.length;ri++){
       const row=table[ri];if(!row||!row.length)continue;
@@ -2648,11 +2675,13 @@ function fetchQualityData(silent){
     loadArchiveIds();
     qualityLastImport=now;
     try{localStorage.setItem(QUALITY_LAST_IMPORT_KEY,String(now));}catch(e){}
-    if(!silent)showToast(`✅ Saved ${added} quality rows (old data kept)`);
+    _qHash=_h;window._qFirstDone=true;
+    if(!silent)showToast(newWeek?`✅ New week detected — saved ${added} quality rows`:`✅ Saved ${added} quality rows (old data kept)`);
+    else if(!_firstPoll)showToast('📥 Quality '+(newWeek?'new week':'update')+' loaded — '+added+' rows');
     if(activeLoc==='__quality__')renderAllSections();
   }).catch(e=>{
     qualityLoading=false;if(btn)btn.disabled=false;
-    loadArchiveIds();
+    if(!window._qFirstDone)loadArchiveIds();window._qFirstDone=true;
     if(!silent)showToast('⚠️ Failed to load quality data: '+e.message);
   });
 }
@@ -2879,7 +2908,7 @@ function renderQualitySection(mc){
   const curWeekLbl=derivedWeekLbl||'— (no Actual Date found yet)';
   const lastImp=qualityLastImport?new Date(qualityLastImport).toLocaleString():'—';
   const toolbar=document.createElement('div');toolbar.className='sec';
-  toolbar.innerHTML=`<div class="sec-hd"><span class="sec-t">📥 Import from "Export" tab</span><span class="sec-m">Last import: ${esc(lastImp)}</span></div><div style="padding:12px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="bdg bdg-info" style="border-color:var(--border);color:var(--primary)">📅 ${esc(curWeekLbl)}</span><button class="btn btn-c" id="qualityRefreshBtn" onclick="fetchQualityData(false)">📥 Import / Refresh Quality</button><button class="btn btn-d" onclick="resetQualityWeek()">🔄 Reset (New Week)</button><span class="ltxt" style="font-size:.6rem">The week shown above is worked out automatically from the "Actual Date" column in Export — no need to set it manually. Old data stays saved even if you clear the Export tab and add new data — hit Reset before pulling a new week's quality.</span></div>`;
+  toolbar.innerHTML=`<div class="sec-hd"><span class="sec-t">📥 Import from "Export" tab</span><span class="sec-m">Last import: ${esc(lastImp)}</span></div><div style="padding:12px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="bdg bdg-info" style="border-color:var(--border);color:var(--primary)">📅 ${esc(curWeekLbl)}</span><button class="btn btn-c" id="qualityRefreshBtn" onclick="fetchQualityData(false)">📥 Import / Refresh Quality</button><button class="btn btn-d" onclick="resetQualityWeek()">🔄 Reset (New Week)</button><span class="ltxt" style="font-size:.6rem">The week shown above is worked out automatically from the "Actual Date" column in Export — no need to set it manually. Quality syncs by itself on every device (about every 30 seconds): when you paste a NEW week into Export it shows up everywhere and replaces the previous week automatically. Old data stays saved if you only clear the Export tab. Reset is only needed to wipe everything by hand.</span></div>`;
   mc.appendChild(toolbar);
 
   /* ---- Search by ID ---- */
@@ -3926,7 +3955,7 @@ function shootWebScrollTop(){
 function startApp(){renderUserChip(false);
   if(!document.getElementById('splash')&&window._splashTpl)document.body.insertAdjacentHTML('afterbegin',window._splashTpl);
   fillWelcome();
-  const savedTheme=localStorage.getItem('meeg_theme')||(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',savedTheme);const btn=document.getElementById('darkBtn');if(btn){btn.classList.toggle('active',savedTheme==='dark');btn.innerHTML=savedTheme==='dark'?'🌙 Dark':'☀️ Light';}applyAutoRefreshUI();hideSplash();loadData();startVersionPolling();(function _q(n){if(window._firstDataReady||n>40)fetchQualityData(true);else setTimeout(()=>_q(n+1),300);})(0);startUsersWatch();
+  const savedTheme=localStorage.getItem('meeg_theme')||(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',savedTheme);const btn=document.getElementById('darkBtn');if(btn){btn.classList.toggle('active',savedTheme==='dark');btn.innerHTML=savedTheme==='dark'?'🌙 Dark':'☀️ Light';}applyAutoRefreshUI();hideSplash();loadData();startVersionPolling();(function _q(n){if(window._firstDataReady||n>40)fetchQualityData(true);else setTimeout(()=>_q(n+1),300);})(0);startQualityPolling();startUsersWatch();
 }
 function _bootApp(){
   initLoginDodge();
