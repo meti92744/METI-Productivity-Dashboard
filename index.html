@@ -4555,7 +4555,14 @@ function up(){var h=new Date().getHours(),t=h<12?'Good morning':h<18?'Good after
 .an-list{max-height:72vh;overflow-y:auto;padding:0 12px 6px}
 .an-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding:12px;border-top:1px solid var(--border-light)}
 .an-row:hover{background:var(--primary-light)}
-.an-c1{width:150px}.an-c2{width:210px}.an-c3{width:105px}
+.an-c1{width:150px}.an-c2{width:230px}.an-c3{width:160px}
+.an-c2 span.an-bad{color:#ef4444;font-weight:700}
+.an-rep{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;background:rgba(239,68,68,.16);border:1px solid rgba(239,68,68,.55);color:#ef4444;font:700 .66rem var(--font);cursor:help}
+.an-by{display:inline-block;max-width:100%;margin-top:3px;padding:2px 9px;border-radius:999px;background:rgba(99,102,241,.16);color:#8b8ff5;font:600 .68rem var(--font);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:top}
+.an-by.me{background:rgba(23,185,120,.16);color:#17b978}
+.an-sync{position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 8px;padding:9px 16px;border-radius:12px;background:rgba(245,158,11,.16);border:1px solid rgba(245,158,11,.55);color:var(--text);font:600 .8rem var(--font)}
+.an-sync.bad{background:rgba(239,68,68,.16);border-color:rgba(239,68,68,.6)}
+.an-sync button{flex:none;border:0;border-radius:999px;padding:6px 14px;background:#ef4444;color:#fff;font:700 .76rem var(--font);cursor:pointer}
 .an-c1 a{font-weight:700;font-size:.82rem;color:var(--info);text-decoration:none}
 .an-row small,.an-row i{display:block;font-style:normal;font-size:.66rem;color:var(--muted)}
 .an-c2 span{display:block;font-size:.8rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -4640,6 +4647,32 @@ document.addEventListener('keydown',ev=>{
   if(ev.repeat)return;
   anSaveAll();
 },true);
+/* ---- Repeat alert: same Labeler / QTC got Poor or Average AN_REP_N+ times in the last 7 days ---- */
+const AN_REP_N=3;
+let anRepC=null;
+function anRep(){
+  if(anRepC)return anRepC;
+  const d=new Date();d.setDate(d.getDate()-6);const from=anYmd(d),R={lab:{},qc:{}};
+  (anAllCache||[]).forEach(t=>{const l=anLog[t.id];if(!l||!t.day||t.day<from)return;
+    [['lab',l.lr,t.lab],['qc',l.qr,t.qc]].forEach(([k,r,n])=>{if(!n||(r!=='Poor'&&r!=='Average'))return;
+      const o=R[k][n]=R[k][n]||{n:0,Poor:0,Average:0};o.n++;o[r]++;});});
+  return anRepC=R;
+}
+function anRepOf(k,name){const o=anRep()[k][name];return o&&o.n>=AN_REP_N?o:null;}
+function anRepBadge(k,name){const o=anRepOf(k,name);return o?`<b class="an-rep" title="${o.Poor} Poor · ${o.Average} Average in the last 7 days">⚠ ${o.n}×</b>`:'';}
+/* ---- sticky "not synced" banner ---- */
+function anRetryNow(){anFailed.clear();anFlush();anUpdBanner();}
+function anUpdBanner(){
+  try{
+    const el=document.getElementById('anSyncBar');if(!el)return;
+    const n=Object.keys(anPending).length;
+    if(!n){el.style.display='none';el.innerHTML='';return;}
+    const bad=Object.keys(anPending).some(id=>anFailed.has(id));
+    el.style.display='flex';el.className='an-sync'+(bad?' bad':'');
+    el.innerHTML=bad?`<span>⚠️ <b>${n}</b> task${n!==1?'s':''} NOT saved to the sheet yet — will keep retrying. Don't close this page.</span><button type="button" onclick="anRetryNow()">↻ Retry now</button>`
+                    :`<span>⏳ Syncing <b>${n}</b> task${n!==1?'s':''} to the sheet…</span>`;
+  }catch(_){}
+}
 function anIsMine(id){const l=anLog[id];if(!l)return false;return anNorm(l.analyst)===anNorm(anMyName())||!!anMineIds()[id];}
 function anLocked(id){const l=anLog[id];return !!(l&&l.analyst&&l.analyst!==anMyName()&&!anIsSV());}   // a rating belongs to who made it (SV can edit any)
 const RATE_W={Excellent:1,Good:.75,Average:.5,Poor:0};                               // Score = Σ(rating×weight) ÷ tasks
@@ -4652,10 +4685,10 @@ let anView='tasks',anGroup='QC',anLog={},anLogLoaded=false,anF={from:'',to:'',la
 function anCol(n){return hdrs.findIndex(h=>h.toLowerCase()===n.toLowerCase());}
 function anYmd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function anTasks(){
-  const c={id:anCol('Id'),lab:anCol('Labeler Name'),qc:anCol('Qtc Name'),st:anCol('Stage'),pass:anCol('Pass'),at:anCol('Created At'),lnk:anCol('Task Link'),sh:anCol('Shift')};
+  const c={id:anCol('Id'),lab:anCol('Labeler Name'),qc:anCol('Qtc Name'),st:anCol('Stage'),pass:anCol('Pass'),at:anCol('Created At'),lnk:anCol('Task Link'),sh:anCol('Shift'),obj:anCol('Object Count')};
   return rawRows.map(r=>{const d=new Date(r[c.at]);const ok=!isNaN(d);const stage=String(r[c.st]||'');
     return{id:String(r[c.id]||'').trim(),lab:String(r[c.lab]||'').trim(),qc:String(r[c.qc]||'').replace(/\s*\([^)]*\)\s*$/,'').trim(),
-      type:/lidar/i.test(stage)?'Lidar':'Lane Line',pass:String(r[c.pass]||'').trim(),link:String(r[c.lnk]||''),shift:(v=>/over/.test(v)?'ON':/night/.test(v)?'N':/morn|day/.test(v)?'M':'')(String(r[c.sh]||'').toLowerCase()),time:ok?d.getTime():0,day:ok?anYmd(d):'',ts:ok?anYmd(d)+' '+d.toTimeString().slice(0,8):''};
+      type:/lidar/i.test(stage)?'Lidar':'Lane Line',pass:String(r[c.pass]||'').trim(),obj:(c.obj>=0?(v=>isNaN(v)?null:v)(parseFloat(String(r[c.obj]??'').replace(/,/g,''))):null),link:String(r[c.lnk]||''),shift:(v=>/over/.test(v)?'ON':/night/.test(v)?'N':/morn|day/.test(v)?'M':'')(String(r[c.sh]||'').toLowerCase()),time:ok?d.getTime():0,day:ok?anYmd(d):'',ts:ok?anYmd(d)+' '+d.toTimeString().slice(0,8):''};
   }).filter(t=>t.id);
 }
 const AN_RANK_M=5;   // weight of the overall average when ranking: a name with few tasks is pulled toward it
@@ -4679,7 +4712,7 @@ function anLoadLog(cb){
    upload to the sheet runs in the background (queued, auto-retried, kept in the browser until it really reached the sheet). */
 let anDraft={},anFailed=new Set(),anFlushing=false,anRetryT=null,anRecent={},anLastAct=0;
 let anPending=(()=>{try{return JSON.parse(localStorage.getItem('an_pending')||'{}')||{};}catch(_){return {};}})();
-function anPendSave(){try{localStorage.setItem('an_pending',JSON.stringify(anPending));}catch(_){}}
+function anPendSave(){try{localStorage.setItem('an_pending',JSON.stringify(anPending));}catch(_){}try{anUpdBanner();}catch(_){}}
 function anCur(id){const l=anLog[id]||{},d=anDraft[id]||{};return{lr:'lr' in d?d.lr:(l.lr||''),qr:'qr' in d?d.qr:(l.qr||''),issue:'issue' in d?d.issue:(l.issue||'')};}
 function anNeedIssue(v){return !!(((v.lr&&v.lr!=='Excellent')||(v.qr&&v.qr!=='Excellent'))&&!String(v.issue||'').trim());}
 function anDraftSet(id,patch){anDraft[id]=Object.assign({},anDraft[id],patch);}
@@ -4697,7 +4730,7 @@ function anMark(id){
   row.classList.toggle('an-dirty',anIsDirty(id));
   if(btn){btn.className='an-save '+b.c;btn.disabled=b.d;btn.textContent=b.t;btn.title=b.tip;}
   if(inp)inp.classList.toggle('an-need',anNeedIssue(anCur(id)));
-  anUpdSaveAll();
+  anUpdSaveAll();anUpdBanner();
 }
 function anRowRefresh(id){   // re-draw just this row (fast — no full re-render)
   const el=document.querySelector('.an-row[data-id="'+id+'"]'),t=anAllCache.find(x=>x.id===id);if(!el||!t)return;
@@ -4706,7 +4739,7 @@ function anRowRefresh(id){   // re-draw just this row (fast — no full re-rende
 }
 function anRow(t){
   const l=anLog[t.id]||{},v=anCur(t.id),lock=anLocked(t.id),dirty=anIsDirty(t.id),need=anNeedIssue(v),issOn=anIssueOn(v);
-  return `<div class="an-row${dirty?' an-dirty':''}" data-id="${t.id}"><label class="an-sel" title="Select to copy several tasks"><input type="checkbox" class="sel-cb" data-k="an" ${(SEL.kind==='an'&&SEL.map.has(t.id))?'checked ':''}onchange="selToggle('an','${t.id}',this.checked)"></label><div class="an-c1"><a href="${esc(t.link)}" target="_blank" rel="noopener">${t.id} ↗</a><small>${t.ts}</small></div><div class="an-c2"><span><i>Labeler</i>${esc(t.lab)}</span><span><i>QTC</i>${esc(t.qc)}</span></div><div class="an-c3">${t.type} · ${t.pass}<small>${esc(l.analyst||'—')}</small></div><div class="an-rt"><i>Labeler rating</i>${anRateBtns(t.id,'L',v.lr,lock)}</div><div class="an-rt"><i>QTC rating</i>${anRateBtns(t.id,'Q',v.qr,lock)}</div><div class="an-act${issOn?'':' an-noiss'}"><input class="an-iss${need?' an-need':''}"${issOn?'':' style="display:none"'} data-id="${t.id}" placeholder="${need?'Required — write the problem…':'Write the problem… (Enter to save)'}" value="${esc(v.issue||'')}"${lock?' disabled':''} oninput="anTyping('${t.id}',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();anCommit('${t.id}')}">${anBtnHtml(t.id)}<button class="an-copy" type="button" title="Copy link, names, ratings and the problem (without the analyst name)" onclick="anCopy('${t.id}',this)">📋 Copy</button></div></div>`;
+  return `<div class="an-row${dirty?' an-dirty':''}" data-id="${t.id}"><label class="an-sel" title="Select to copy several tasks"><input type="checkbox" class="sel-cb" data-k="an" ${(SEL.kind==='an'&&SEL.map.has(t.id))?'checked ':''}onchange="selToggle('an','${t.id}',this.checked)"></label><div class="an-c1"><a href="${esc(t.link)}" target="_blank" rel="noopener">${t.id} ↗</a><small>${t.ts}</small></div><div class="an-c2"><span${anRepOf('lab',t.lab)?' class="an-bad"':''}><i>Labeler</i>${esc(t.lab)}${anRepBadge('lab',t.lab)}</span><span${anRepOf('qc',t.qc)?' class="an-bad"':''}><i>QTC</i>${esc(t.qc)}${anRepBadge('qc',t.qc)}</span></div><div class="an-c3">${t.type} · ${t.pass}<small>🧩 ${t.obj==null?'—':t.obj.toLocaleString()} objects</small>${l.analyst?`<span class="an-by${anNorm(l.analyst)===anNorm(anMyName())?' me':''}" title="Analyzed by ${esc(l.analyst)}">✔ ${esc(l.analyst)}</span>`:'<small>Not analyzed</small>'}</div><div class="an-rt"><i>Labeler rating</i>${anRateBtns(t.id,'L',v.lr,lock)}</div><div class="an-rt"><i>QTC rating</i>${anRateBtns(t.id,'Q',v.qr,lock)}</div><div class="an-act${issOn?'':' an-noiss'}"><input class="an-iss${need?' an-need':''}"${issOn?'':' style="display:none"'} data-id="${t.id}" placeholder="${need?'Required — write the problem…':'Write the problem… (Enter to save)'}" value="${esc(v.issue||'')}"${lock?' disabled':''} oninput="anTyping('${t.id}',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();anCommit('${t.id}')}">${anBtnHtml(t.id)}<button class="an-copy" type="button" title="Copy link, names, ratings and the problem (without the analyst name)" onclick="anCopy('${t.id}',this)">📋 Copy</button></div></div>`;
 }
 function anTyping(id,val){anDraftSet(id,{issue:val});anMark(id);}
 function anRate(id,who,val){
@@ -4747,7 +4780,7 @@ function anCommit(id){
   if(anNeedIssue(v)){anBigAlert(id);return;}
   const e={id:id,lr:v.lr||'',qr:v.qr||'',issue:String(v.issue||'').trim(),analyst:(anLog[id]&&anLog[id].analyst&&anIsSV()?anLog[id].analyst:ANALYSIS_USERS[anMe()][0]),date:anYmd(new Date())};
   anLog[id]={analyst:e.analyst,lr:e.lr,qr:e.qr,issue:e.issue,date:e.date};   // instant: it is "Saved" right now
-  anMineAdd(id);
+  anMineAdd(id);anRepC=null;
   delete anDraft[id];anFailed.delete(id);
   anPending[id]=e;anPendSave();anRecent[id]={e:anLog[id],ts:Date.now()};
   try{localStorage.setItem('an_log',JSON.stringify(anLog));}catch(_){}
@@ -4782,7 +4815,7 @@ function anFinishLoad(cb){
     if(now-r.ts>120000){delete anRecent[id];return;}                                                       // gave up waiting for the sheet to show it
     if(!x)anLog[id]=r.e;});                                                                                // just saved, the sheet read hasn't caught up yet → keep it for now
   try{localStorage.setItem('an_log',JSON.stringify(anLog));}catch(_){}
-  anLogLoaded=true;cb&&cb();
+  anRepC=null;anLogLoaded=true;cb&&cb();
   if(Object.keys(anPending).length)anFlush();
 }
 function anResync(){anLoadLog(()=>{if(activeLoc==='__analysis__')renderAnalysis(document.getElementById('mainContent'));});}
@@ -4927,7 +4960,7 @@ async function anShot(btn){
 function renderAnalysis(mc){
   if(!mc)return;
   if(!anLogLoaded){mc.innerHTML='<div class="loader"><span class="ltxt">Loading analysis…</span></div>';anLoadLog(()=>{if(activeLoc==='__analysis__')renderAnalysis(mc);});return;}
-  const all=anTasks();anAllCache=all;const tasks=anFiltered(all);let body='',meta='';
+  const all=anTasks();anAllCache=all;anRepC=null;const tasks=anFiltered(all);let body='',meta='';
   const note=ANALYSIS_API_URL?'':'<div class="an-note">⚠ ANALYSIS_API_URL is empty — ratings are saved in this browser only. Deploy analysis_script.gs and paste its URL to share them.</div>';
   const _sc=mc.querySelector('.tbl-w'),_st=_sc?_sc.scrollTop:0,_wy=window.scrollY;
   if(anView==='tasks'){
@@ -4957,8 +4990,8 @@ function renderAnalysis(mc){
     const iss=tasks.filter(t=>anLog[t.id]&&anLog[t.id].issue);meta=iss.length+' issues';
     body=anDateBar()+`<div class="tbl-w" style="max-height:620px"><table class="an-t"><tr><th>Task</th><th>Time</th><th>Labeler</th><th>QTC</th><th>Type</th><th>Analyst</th><th>Issue / Problem</th></tr>`+iss.map(t=>`<tr><td><a href="${esc(t.link)}" target="_blank" rel="noopener">${t.id} ↗</a></td><td>${t.ts}</td><td>${esc(t.lab)}</td><td>${esc(t.qc)}</td><td>${t.type}</td><td>${esc(anLog[t.id].analyst||'')}</td><td style="white-space:normal">${esc(anLog[t.id].issue)}</td></tr>`).join('')+'</table></div>';
   }
-  mc.innerHTML=`<div class="an-wrap"><div class="sec" style="overflow:visible!important"><div class="sec-hd"><div class="sec-t">🔎 Analysis</div><div class="sec-m">${meta}</div></div>${anTabs()}${note}${body}</div></div>`;
-  const _n=mc.querySelector('.tbl-w');if(_n)_n.scrollTop=_st;window.scrollTo(0,_wy);anUpdSaveAll();
+  mc.innerHTML=`<div class="an-wrap"><div id="anSyncBar" class="an-sync" style="display:none"></div><div class="sec" style="overflow:visible!important"><div class="sec-hd"><div class="sec-t">🔎 Analysis</div><div class="sec-m">${meta}</div></div>${anTabs()}${note}${body}</div></div>`;
+  const _n=mc.querySelector('.tbl-w');if(_n)_n.scrollTop=_st;window.scrollTo(0,_wy);anUpdSaveAll();anUpdBanner();
 }
 </script>
 
