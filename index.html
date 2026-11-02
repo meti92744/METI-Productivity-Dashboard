@@ -4677,7 +4677,7 @@ function anUpdBanner(){
 }
 function anIsMine(id){const l=anLog[id];if(!l)return false;return anNorm(l.analyst)===anNorm(anMyName())||!!anMineIds()[id];}
 function anLocked(id){const l=anLog[id];return !!(l&&l.analyst&&l.analyst!==anMyName()&&!anIsSV());}   // a rating belongs to who made it (SV can edit any)
-const RATE_W={Excellent:1,Good:.75,Average:.5,Poor:0};                               // Score = Σ(rating×weight) ÷ tasks
+const RATE_W={Excellent:1,Good:.75,Average:.5,Poor:.25};                               // Score = Σ(rating×weight) ÷ tasks
 const RATES=['Excellent','Good','Average','Poor'];
 const RATE_COL={Excellent:'#16a34a',Good:'#2563eb',Average:'#f59e0b',Poor:'#dc2626'};
 function anMix(c){const T=RATES.reduce((s,k)=>s+(c[k]||0),0);if(!T)return '';
