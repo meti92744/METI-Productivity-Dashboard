@@ -4632,6 +4632,14 @@ function anSaveAll(){
     const i=document.querySelector('.an-iss[data-id="'+need[0]+'"]');if(i){i.scrollIntoView({block:'center'});i.focus();}
   }else showToast('✅ Saved '+saved+' task'+(saved!==1?'s':''));
 }
+/* Ctrl+S (Cmd+S on Mac) = Save all, only while the Analysis > Tasks list is open */
+document.addEventListener('keydown',ev=>{
+  if(!(ev.ctrlKey||ev.metaKey)||ev.altKey||ev.shiftKey||String(ev.key).toLowerCase()!=='s')return;
+  if(typeof activeLoc==='undefined'||activeLoc!=='__analysis__'||anView!=='tasks'||!anAllowed())return;
+  ev.preventDefault();   // stop the browser's own "Save page" dialog
+  if(ev.repeat)return;
+  anSaveAll();
+},true);
 function anIsMine(id){const l=anLog[id];if(!l)return false;return anNorm(l.analyst)===anNorm(anMyName())||!!anMineIds()[id];}
 function anLocked(id){const l=anLog[id];return !!(l&&l.analyst&&l.analyst!==anMyName()&&!anIsSV());}   // a rating belongs to who made it (SV can edit any)
 const RATE_W={Excellent:1,Good:.75,Average:.5,Poor:0};                               // Score = Σ(rating×weight) ÷ tasks
@@ -4924,7 +4932,7 @@ function renderAnalysis(mc){
   const _sc=mc.querySelector('.tbl-w'),_st=_sc?_sc.scrollTop:0,_wy=window.scrollY;
   if(anView==='tasks'){
     const labs=[...new Set(all.map(t=>t.lab))].sort(),qcs=[...new Set(all.map(t=>t.qc))].sort(),shown=tasks.sort((a,b)=>b.time-a.time).slice(0,anLimit);meta=tasks.length+' tasks';
-    body=`<div class="an-bar">${anRange()}${anDD('lab','👤 Labeler',anCount(all,t=>t.lab))}${anDD('qc','🏷 QTC',anCount(all,t=>t.qc))}${anDD('type','Type',anCount(all,t=>t.type))}${anDD('pass','✅ Pass',anCount(all,t=>t.pass))}${anDD('status','Status',['Not analyzed','Analyzed','Has issue'].map(v=>({v})),true)}<input placeholder="Task id / name…" value="${esc(anF.q)}" onchange="anSet('q',this.value)"><button class="preset${anF.mine?' on':''}" onclick="anSet('mine',!anF.mine)">👤 My tasks</button><button id="anSaveAll" class="an-saveall" type="button" disabled onclick="anSaveAll()">💾 Save all</button></div>
+    body=`<div class="an-bar">${anRange()}${anDD('lab','👤 Labeler',anCount(all,t=>t.lab))}${anDD('qc','🏷 QTC',anCount(all,t=>t.qc))}${anDD('type','Type',anCount(all,t=>t.type))}${anDD('pass','✅ Pass',anCount(all,t=>t.pass))}${anDD('status','Status',['Not analyzed','Analyzed','Has issue'].map(v=>({v})),true)}<input placeholder="Task id / name…" value="${esc(anF.q)}" onchange="anSet('q',this.value)"><button class="preset${anF.mine?' on':''}" onclick="anSet('mine',!anF.mine)">👤 My tasks</button><button id="anSaveAll" class="an-saveall" title="Save all (Ctrl+S)" type="button" disabled onclick="anSaveAll()">💾 Save all</button></div>
       <div class="an-list">`+
       shown.map(anRow).join('')+'</div>'+(tasks.length>anLimit?'<button class="an-more" type="button" onclick="anMore()">Load more ('+(tasks.length-anLimit)+' left)</button>':'');
   }else if(anView==='ratings'){
