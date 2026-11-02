@@ -3949,6 +3949,7 @@ function rdCopyText(r){
   const L=[];
   if(id)L.push('Task: '+id);
   if(ts)L.push('Time: '+ts);
+  {const sh=g('shift');if(sh)L.push('Shift: '+sh);}
   if(link)L.push('Link: '+link);
   if(lab)L.push('Labeler: '+lab+(lr?' — '+lr:''));
   if(qc)L.push('QTC: '+qc+(qr?' — '+qr:''));
@@ -4688,7 +4689,7 @@ function anTasks(){
   const c={id:anCol('Id'),lab:anCol('Labeler Name'),qc:anCol('Qtc Name'),st:anCol('Stage'),pass:anCol('Pass'),at:anCol('Created At'),lnk:anCol('Task Link'),sh:anCol('Shift'),obj:anCol('Object Count')};
   return rawRows.map(r=>{const d=new Date(r[c.at]);const ok=!isNaN(d);const stage=String(r[c.st]||'');
     return{id:String(r[c.id]||'').trim(),lab:String(r[c.lab]||'').trim(),qc:String(r[c.qc]||'').replace(/\s*\([^)]*\)\s*$/,'').trim(),
-      type:/lidar/i.test(stage)?'Lidar':'Lane Line',pass:String(r[c.pass]||'').trim(),obj:(c.obj>=0?(v=>isNaN(v)?null:v)(parseFloat(String(r[c.obj]??'').replace(/,/g,''))):null),link:String(r[c.lnk]||''),shift:(v=>/over/.test(v)?'ON':/night/.test(v)?'N':/morn|day/.test(v)?'M':'')(String(r[c.sh]||'').toLowerCase()),time:ok?d.getTime():0,day:ok?anYmd(d):'',ts:ok?anYmd(d)+' '+d.toTimeString().slice(0,8):''};
+      type:/lidar/i.test(stage)?'Lidar':'Lane Line',pass:String(r[c.pass]||'').trim(),shiftRaw:(c.sh>=0?String(r[c.sh]||'').trim():''),obj:(c.obj>=0?(v=>isNaN(v)?null:v)(parseFloat(String(r[c.obj]??'').replace(/,/g,''))):null),link:String(r[c.lnk]||''),shift:(v=>/over/.test(v)?'ON':/night/.test(v)?'N':/morn|day/.test(v)?'M':'')(String(r[c.sh]||'').toLowerCase()),time:ok?d.getTime():0,day:ok?anYmd(d):'',ts:ok?anYmd(d)+' '+d.toTimeString().slice(0,8):''};
   }).filter(t=>t.id);
 }
 const AN_RANK_M=5;   // weight of the overall average when ranking: a name with few tasks is pulled toward it
@@ -4840,6 +4841,7 @@ function anCopyText(id){
   const t=anAllCache.find(x=>x.id===id);if(!t)return '';
   const v=anCur(id),L=['Task: '+t.id];
   if(t.ts)L.push('Time: '+t.ts);
+  {const sh=t.shiftRaw||({M:'Morning',N:'Night',ON:'Overnight'}[t.shift]||'');if(sh)L.push('Shift: '+sh);}
   if(t.link)L.push('Link: '+t.link);
   L.push('Labeler: '+t.lab+(v.lr?' — '+v.lr:''));
   L.push('QTC: '+t.qc+(v.qr?' — '+v.qr:''));
