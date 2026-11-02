@@ -3952,7 +3952,7 @@ function rdCopyText(r){
   if(link)L.push('Link: '+link);
   if(lab)L.push('Labeler: '+lab+(lr?' — '+lr:''));
   if(qc)L.push('QTC: '+qc+(qr?' — '+qr:''));
-  if(issue)L.push('Problem: '+issue);
+  if(issue)L.push('Issue: '+issue);
   return L.join('\n');
 }
 function rdCopy(i,btn){
@@ -4598,6 +4598,11 @@ function anMe(){return String(getLoggedInEmail()||'').trim().toLowerCase();}
 function anAllowed(){return !!ANALYSIS_USERS[anMe()];}
 function anMyName(){return ANALYSIS_USERS[anMe()]?ANALYSIS_USERS[anMe()][0]:'';}
 function anIsSV(){return (ANALYSIS_USERS[anMe()]||[])[1]==='SV';}
+/* ---- My tasks: a task you saved stays in "My tasks" (and keeps its rating) even if the sheet writes the analyst name a bit differently ---- */
+function anNorm(x){return String(x||'').replace(/\s+/g,' ').trim().toLowerCase();}
+function anMineIds(){try{return JSON.parse(localStorage.getItem('an_mine_'+anMe())||'{}')||{};}catch(_){return {};}}
+function anMineAdd(id){try{const m=anMineIds();m[id]=1;localStorage.setItem('an_mine_'+anMe(),JSON.stringify(m));}catch(_){}}
+function anIsMine(id){const l=anLog[id];if(!l)return false;return anNorm(l.analyst)===anNorm(anMyName())||!!anMineIds()[id];}
 function anLocked(id){const l=anLog[id];return !!(l&&l.analyst&&l.analyst!==anMyName()&&!anIsSV());}   // a rating belongs to who made it (SV can edit any)
 const RATE_W={Excellent:1,Good:.75,Average:.5,Poor:0};                               // Score = Σ(rating×weight) ÷ tasks
 const RATES=['Excellent','Good','Average','Poor'];
@@ -4700,6 +4705,7 @@ function anCommit(id){
   if(anNeedIssue(v)){anBigAlert(id);return;}
   const e={id:id,lr:v.lr||'',qr:v.qr||'',issue:String(v.issue||'').trim(),analyst:(anLog[id]&&anLog[id].analyst&&anIsSV()?anLog[id].analyst:ANALYSIS_USERS[anMe()][0]),date:anYmd(new Date())};
   anLog[id]={analyst:e.analyst,lr:e.lr,qr:e.qr,issue:e.issue,date:e.date};   // instant: it is "Saved" right now
+  anMineAdd(id);
   delete anDraft[id];anFailed.delete(id);
   anPending[id]=e;anPendSave();anRecent[id]={e:anLog[id],ts:Date.now()};
   try{localStorage.setItem('an_log',JSON.stringify(anLog));}catch(_){}
@@ -4762,7 +4768,7 @@ function anCopyText(id){
   if(t.link)L.push('Link: '+t.link);
   L.push('Labeler: '+t.lab+(v.lr?' — '+v.lr:''));
   L.push('QTC: '+t.qc+(v.qr?' — '+v.qr:''));
-  if(String(v.issue||'').trim())L.push('Problem: '+String(v.issue).trim());
+  if(String(v.issue||'').trim())L.push('Issue: '+String(v.issue).trim());
   return L.join('\n');
 }
 function anCopy(id,btn){
@@ -4793,7 +4799,7 @@ function anFiltered(all){
   return all.filter(t=>{const l=anLog[t.id];
     if(anF.from&&t.day<anF.from)return false;if(anF.to&&t.day>anF.to)return false;
     if(anF.lab.size&&!anF.lab.has(t.lab))return false;if(anF.qc.size&&!anF.qc.has(t.qc))return false;
-    if(anF.type.size&&!anF.type.has(t.type))return false;if(anF.shift&&t.shift!==anF.shift)return false;if(anF.mine&&!(l&&l.analyst===anMyName()))return false;if(anF.pass.size&&!anF.pass.has(t.pass))return false;
+    if(anF.type.size&&!anF.type.has(t.type))return false;if(anF.shift&&t.shift!==anF.shift)return false;if(anF.mine&&!anIsMine(t.id))return false;if(anF.pass.size&&!anF.pass.has(t.pass))return false;
     if(anF.q&&!(t.id.includes(anF.q)||t.lab.toLowerCase().includes(anF.q.toLowerCase())))return false;
     if(anF.status==='Not analyzed'&&l)return false;if(anF.status==='Analyzed'&&!l)return false;if(anF.status==='Has issue'&&!(l&&l.issue))return false;return true;});
 }
