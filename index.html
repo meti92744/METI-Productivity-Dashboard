@@ -3950,6 +3950,7 @@ function rdCopyText(r){
   if(id)L.push('Task: '+id);
   if(ts)L.push('Time: '+ts);
   {const sh=g('shift');if(sh)L.push('Shift: '+sh);}
+  {const stg=g('stage'),ps=g('pass');if(stg)L.push('Type: '+(/lidar/i.test(stg)?'Lidar':'Lane Line'));if(ps)L.push('Pass: '+ps);}
   if(link)L.push('Link: '+link);
   if(lab)L.push('Labeler: '+lab+(lr?' — '+lr:''));
   if(qc)L.push('QTC: '+qc+(qr?' — '+qr:''));
@@ -4842,6 +4843,8 @@ function anCopyText(id){
   const v=anCur(id),L=['Task: '+t.id];
   if(t.ts)L.push('Time: '+t.ts);
   {const sh=t.shiftRaw||({M:'Morning',N:'Night',ON:'Overnight'}[t.shift]||'');if(sh)L.push('Shift: '+sh);}
+  if(t.type)L.push('Type: '+t.type);
+  if(t.pass)L.push('Pass: '+t.pass);
   if(t.link)L.push('Link: '+t.link);
   L.push('Labeler: '+t.lab+(v.lr?' — '+v.lr:''));
   L.push('QTC: '+t.qc+(v.qr?' — '+v.qr:''));
