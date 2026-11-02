@@ -4571,6 +4571,12 @@ function up(){var h=new Date().getHours(),t=h<12?'Good morning':h<18?'Good after
 .an-act{display:flex;align-items:center;gap:8px;flex:1;min-width:340px}
 .an-row .an-act .an-iss{flex:1;min-width:0;width:auto}
 .an-save{flex:none}
+.an-act.an-noiss .an-save{margin-left:auto}
+.an-saveall{background:var(--elevated);border:1px solid var(--border-light);color:var(--muted);border-radius:999px;padding:7px 14px;font:600 .78rem var(--font);cursor:pointer;opacity:.6}
+.an-saveall.on{background:var(--accent);border-color:var(--accent);color:#fff;opacity:1}
+.an-saveall:disabled{cursor:not-allowed}
+.an-more{display:block;margin:14px auto;background:var(--elevated);border:1px solid var(--border-light);color:var(--text);border-radius:999px;padding:9px 22px;font:600 .8rem var(--font);cursor:pointer}
+.an-more:hover{border-color:var(--accent)}
 .an-save.ok{background:rgba(23,185,120,.14);border-color:rgba(23,185,120,.55);color:#17b978;opacity:1}
 .an-save.ok.syncing{opacity:.9}
 .an-save.fail{background:var(--danger,#c4293f);border-color:var(--danger,#c4293f);color:#fff;opacity:1}
@@ -4602,6 +4608,30 @@ function anIsSV(){return (ANALYSIS_USERS[anMe()]||[])[1]==='SV';}
 function anNorm(x){return String(x||'').replace(/\s+/g,' ').trim().toLowerCase();}
 function anMineIds(){try{return JSON.parse(localStorage.getItem('an_mine_'+anMe())||'{}')||{};}catch(_){return {};}}
 function anMineAdd(id){try{const m=anMineIds();m[id]=1;localStorage.setItem('an_mine_'+anMe(),JSON.stringify(m));}catch(_){}}
+/* Issue box only exists when a rating is below Excellent */
+function anIssueOn(v){return !!((v.lr&&v.lr!=='Excellent')||(v.qr&&v.qr!=='Excellent'));}
+let anLimit=300;
+function anMore(){anLimit+=300;renderAnalysis(document.getElementById('mainContent'));}
+function anUpdSaveAll(){
+  const b=document.getElementById('anSaveAll');if(!b)return;
+  const n=Object.keys(anDraft).filter(id=>anIsDirty(id)&&!anLocked(id)).length;
+  b.disabled=!n;b.classList.toggle('on',!!n);b.textContent='💾 Save all'+(n?' ('+n+')':'');
+}
+function anSaveAll(){
+  if(!anAllowed())return;
+  const ids=Object.keys(anDraft).filter(id=>anIsDirty(id)&&!anLocked(id));
+  if(!ids.length){showToast('Nothing to save');return;}
+  const need=[];let saved=0;
+  ids.forEach(id=>{
+    if(anNeedIssue(anCur(id))){need.push(id);return;}
+    anCommit(id);saved++;
+  });
+  anUpdSaveAll();
+  if(need.length){
+    showToast('⚠️ Saved '+saved+' · '+need.length+' still need the issue written (task '+need.join(', ')+')');
+    const i=document.querySelector('.an-iss[data-id="'+need[0]+'"]');if(i){i.scrollIntoView({block:'center'});i.focus();}
+  }else showToast('✅ Saved '+saved+' task'+(saved!==1?'s':''));
+}
 function anIsMine(id){const l=anLog[id];if(!l)return false;return anNorm(l.analyst)===anNorm(anMyName())||!!anMineIds()[id];}
 function anLocked(id){const l=anLog[id];return !!(l&&l.analyst&&l.analyst!==anMyName()&&!anIsSV());}   // a rating belongs to who made it (SV can edit any)
 const RATE_W={Excellent:1,Good:.75,Average:.5,Poor:0};                               // Score = Σ(rating×weight) ÷ tasks
@@ -4659,20 +4689,23 @@ function anMark(id){
   row.classList.toggle('an-dirty',anIsDirty(id));
   if(btn){btn.className='an-save '+b.c;btn.disabled=b.d;btn.textContent=b.t;btn.title=b.tip;}
   if(inp)inp.classList.toggle('an-need',anNeedIssue(anCur(id)));
+  anUpdSaveAll();
 }
 function anRowRefresh(id){   // re-draw just this row (fast — no full re-render)
   const el=document.querySelector('.an-row[data-id="'+id+'"]'),t=anAllCache.find(x=>x.id===id);if(!el||!t)return;
   const tmp=document.createElement('div');tmp.innerHTML=anRow(t);el.replaceWith(tmp.firstElementChild);
+  anUpdSaveAll();
 }
 function anRow(t){
-  const l=anLog[t.id]||{},v=anCur(t.id),lock=anLocked(t.id),dirty=anIsDirty(t.id),need=anNeedIssue(v);
-  return `<div class="an-row${dirty?' an-dirty':''}" data-id="${t.id}"><label class="an-sel" title="Select to copy several tasks"><input type="checkbox" class="sel-cb" data-k="an" ${(SEL.kind==='an'&&SEL.map.has(t.id))?'checked ':''}onchange="selToggle('an','${t.id}',this.checked)"></label><div class="an-c1"><a href="${esc(t.link)}" target="_blank" rel="noopener">${t.id} ↗</a><small>${t.ts}</small></div><div class="an-c2"><span><i>Labeler</i>${esc(t.lab)}</span><span><i>QTC</i>${esc(t.qc)}</span></div><div class="an-c3">${t.type} · ${t.pass}<small>${esc(l.analyst||'—')}</small></div><div class="an-rt"><i>Labeler rating</i>${anRateBtns(t.id,'L',v.lr,lock)}</div><div class="an-rt"><i>QTC rating</i>${anRateBtns(t.id,'Q',v.qr,lock)}</div><div class="an-act"><input class="an-iss${need?' an-need':''}" data-id="${t.id}" placeholder="${need?'Required — write the problem…':'Write the problem… (Enter to save)'}" value="${esc(v.issue||'')}"${lock?' disabled':''} oninput="anTyping('${t.id}',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();anCommit('${t.id}')}">${anBtnHtml(t.id)}<button class="an-copy" type="button" title="Copy link, names, ratings and the problem (without the analyst name)" onclick="anCopy('${t.id}',this)">📋 Copy</button></div></div>`;
+  const l=anLog[t.id]||{},v=anCur(t.id),lock=anLocked(t.id),dirty=anIsDirty(t.id),need=anNeedIssue(v),issOn=anIssueOn(v);
+  return `<div class="an-row${dirty?' an-dirty':''}" data-id="${t.id}"><label class="an-sel" title="Select to copy several tasks"><input type="checkbox" class="sel-cb" data-k="an" ${(SEL.kind==='an'&&SEL.map.has(t.id))?'checked ':''}onchange="selToggle('an','${t.id}',this.checked)"></label><div class="an-c1"><a href="${esc(t.link)}" target="_blank" rel="noopener">${t.id} ↗</a><small>${t.ts}</small></div><div class="an-c2"><span><i>Labeler</i>${esc(t.lab)}</span><span><i>QTC</i>${esc(t.qc)}</span></div><div class="an-c3">${t.type} · ${t.pass}<small>${esc(l.analyst||'—')}</small></div><div class="an-rt"><i>Labeler rating</i>${anRateBtns(t.id,'L',v.lr,lock)}</div><div class="an-rt"><i>QTC rating</i>${anRateBtns(t.id,'Q',v.qr,lock)}</div><div class="an-act${issOn?'':' an-noiss'}"><input class="an-iss${need?' an-need':''}"${issOn?'':' style="display:none"'} data-id="${t.id}" placeholder="${need?'Required — write the problem…':'Write the problem… (Enter to save)'}" value="${esc(v.issue||'')}"${lock?' disabled':''} oninput="anTyping('${t.id}',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();anCommit('${t.id}')}">${anBtnHtml(t.id)}<button class="an-copy" type="button" title="Copy link, names, ratings and the problem (without the analyst name)" onclick="anCopy('${t.id}',this)">📋 Copy</button></div></div>`;
 }
 function anTyping(id,val){anDraftSet(id,{issue:val});anMark(id);}
 function anRate(id,who,val){
   if(!anAllowed()||anLocked(id))return;
   const v=anCur(id),was=who==='L'?v.lr:v.qr;
   anDraftSet(id,who==='L'?{lr:was===val?'':val}:{qr:was===val?'':val});
+  if(!anIssueOn(anCur(id))&&String(anCur(id).issue||'').trim())anDraftSet(id,{issue:''});   // Excellent / no rating → no issue
   anRowRefresh(id);
   if(anNeedIssue(anCur(id))){   // any rating below Excellent needs the problem written
     showToast('⚠️ '+anMyName()+' — write the problem for task '+id+', then press Enter or Save');
@@ -4702,6 +4735,7 @@ function anCommit(id){
     return;
   }
   const v=anCur(id);
+  if(!anIssueOn(v))v.issue='';
   if(anNeedIssue(v)){anBigAlert(id);return;}
   const e={id:id,lr:v.lr||'',qr:v.qr||'',issue:String(v.issue||'').trim(),analyst:(anLog[id]&&anLog[id].analyst&&anIsSV()?anLog[id].analyst:ANALYSIS_USERS[anMe()][0]),date:anYmd(new Date())};
   anLog[id]={analyst:e.analyst,lr:e.lr,qr:e.qr,issue:e.issue,date:e.date};   // instant: it is "Saved" right now
@@ -4792,8 +4826,8 @@ function anBigAlert(id){
   o.querySelector('.an-big-ok').focus();
 }
 window.addEventListener('beforeunload',ev=>{if(Object.keys(anDraft).some(anIsDirty)||Object.keys(anPending).length){ev.preventDefault();ev.returnValue='';}});
-function anSet(k,v){anF[k]=v;renderAnalysis(document.getElementById('mainContent'));}
-function anSetView(v){anView=v;renderAnalysis(document.getElementById('mainContent'));}
+function anSet(k,v){anLimit=300;anF[k]=v;renderAnalysis(document.getElementById('mainContent'));}
+function anSetView(v){anLimit=300;anView=v;renderAnalysis(document.getElementById('mainContent'));}
 function anOpts(arr,sel,all){return `<option value="">${all}</option>`+arr.map(x=>`<option${x===sel?' selected':''}>${esc(x)}</option>`).join('');}
 function anFiltered(all){
   return all.filter(t=>{const l=anLog[t.id];
@@ -4828,7 +4862,7 @@ function anPick(k,el,single){const v=el.dataset.v;
   const S=anF[k];S.has(v)?S.delete(v):S.add(v);el.classList.toggle('on',S.has(v));el.querySelector('.dp-cb').textContent=S.has(v)?'✓':'';anDirty=true;}
 function anSrch(k,q){q=q.toLowerCase();document.querySelectorAll('#andp_'+k+' .dp-item').forEach(x=>x.style.display=x.dataset.v.toLowerCase().includes(q)?'':'none');}
 function anClear(k,single){if(single)anF[k]='';else anF[k].clear();anDone();}
-function anDone(){anOpen='';anDirty=false;renderAnalysis(document.getElementById('mainContent'));}
+function anDone(){anLimit=300;anOpen='';anDirty=false;renderAnalysis(document.getElementById('mainContent'));}
 document.addEventListener('click',e=>{if(anOpen&&!(e.target.closest&&e.target.closest('.an-fg'))){if(anDirty)anDone();else{anOpen='';document.querySelectorAll('.an-fg .dpanel').forEach(p=>p.classList.remove('open'));}}});
 
 function anChart(rated){
@@ -4889,10 +4923,10 @@ function renderAnalysis(mc){
   const note=ANALYSIS_API_URL?'':'<div class="an-note">⚠ ANALYSIS_API_URL is empty — ratings are saved in this browser only. Deploy analysis_script.gs and paste its URL to share them.</div>';
   const _sc=mc.querySelector('.tbl-w'),_st=_sc?_sc.scrollTop:0,_wy=window.scrollY;
   if(anView==='tasks'){
-    const labs=[...new Set(all.map(t=>t.lab))].sort(),qcs=[...new Set(all.map(t=>t.qc))].sort(),shown=tasks.sort((a,b)=>b.time-a.time).slice(0,300);meta=tasks.length+' tasks';
-    body=`<div class="an-bar">${anRange()}${anDD('lab','👤 Labeler',anCount(all,t=>t.lab))}${anDD('qc','🏷 QTC',anCount(all,t=>t.qc))}${anDD('type','Type',anCount(all,t=>t.type))}${anDD('pass','✅ Pass',anCount(all,t=>t.pass))}${anDD('status','Status',['Not analyzed','Analyzed','Has issue'].map(v=>({v})),true)}<input placeholder="Task id / name…" value="${esc(anF.q)}" onchange="anSet('q',this.value)"><button class="preset${anF.mine?' on':''}" onclick="anSet('mine',!anF.mine)">👤 My tasks</button></div>
+    const labs=[...new Set(all.map(t=>t.lab))].sort(),qcs=[...new Set(all.map(t=>t.qc))].sort(),shown=tasks.sort((a,b)=>b.time-a.time).slice(0,anLimit);meta=tasks.length+' tasks';
+    body=`<div class="an-bar">${anRange()}${anDD('lab','👤 Labeler',anCount(all,t=>t.lab))}${anDD('qc','🏷 QTC',anCount(all,t=>t.qc))}${anDD('type','Type',anCount(all,t=>t.type))}${anDD('pass','✅ Pass',anCount(all,t=>t.pass))}${anDD('status','Status',['Not analyzed','Analyzed','Has issue'].map(v=>({v})),true)}<input placeholder="Task id / name…" value="${esc(anF.q)}" onchange="anSet('q',this.value)"><button class="preset${anF.mine?' on':''}" onclick="anSet('mine',!anF.mine)">👤 My tasks</button><button id="anSaveAll" class="an-saveall" type="button" disabled onclick="anSaveAll()">💾 Save all</button></div>
       <div class="an-list">`+
-      shown.map(anRow).join('')+'</div>'+(tasks.length>300?'<div class="an-note">Showing the latest 300 — narrow the filters to see more.</div>':'');
+      shown.map(anRow).join('')+'</div>'+(tasks.length>anLimit?'<button class="an-more" type="button" onclick="anMore()">Load more ('+(tasks.length-anLimit)+' left)</button>':'');
   }else if(anView==='ratings'){
     const rated=tasks.filter(t=>anLog[t.id]&&(anLog[t.id].lr||anLog[t.id].qr));meta=rated.length+' rated tasks';
     body=anDateBar()+`<div class="an-bar"><label>Group by</label><button class="preset${anGroup==='QC'?' on':''}" onclick="anGroup='QC';anSetView('ratings')">QTC</button><button class="preset${anGroup==='Labeler'?' on':''}" onclick="anGroup='Labeler';anSetView('ratings')">Labeler</button><label>Shift</label>${['','M','N','ON'].map(v=>`<button class="preset${anF.shift===v?' on':''}" onclick="anSet('shift','${v}')">${v||'All'}</button>`).join('')}<button class="btn" onclick="anShot(this)">📸 Screenshot</button></div>`;
@@ -4916,7 +4950,7 @@ function renderAnalysis(mc){
     body=anDateBar()+`<div class="tbl-w" style="max-height:620px"><table class="an-t"><tr><th>Task</th><th>Time</th><th>Labeler</th><th>QTC</th><th>Type</th><th>Analyst</th><th>Issue / Problem</th></tr>`+iss.map(t=>`<tr><td><a href="${esc(t.link)}" target="_blank" rel="noopener">${t.id} ↗</a></td><td>${t.ts}</td><td>${esc(t.lab)}</td><td>${esc(t.qc)}</td><td>${t.type}</td><td>${esc(anLog[t.id].analyst||'')}</td><td style="white-space:normal">${esc(anLog[t.id].issue)}</td></tr>`).join('')+'</table></div>';
   }
   mc.innerHTML=`<div class="an-wrap"><div class="sec" style="overflow:visible!important"><div class="sec-hd"><div class="sec-t">🔎 Analysis</div><div class="sec-m">${meta}</div></div>${anTabs()}${note}${body}</div></div>`;
-  const _n=mc.querySelector('.tbl-w');if(_n)_n.scrollTop=_st;window.scrollTo(0,_wy);
+  const _n=mc.querySelector('.tbl-w');if(_n)_n.scrollTop=_st;window.scrollTo(0,_wy);anUpdSaveAll();
 }
 </script>
 
