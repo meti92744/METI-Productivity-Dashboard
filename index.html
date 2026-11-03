@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>MEEG Productivity</title>
+<title>METI Productivity</title>
 <meta name="app-version" content="8"/>
 <script id="lite-guard">
 /* Crash guard: "meeg_boot" is set while the page is starting / rebuilding a screen and cleared once it settled.
@@ -37,7 +37,7 @@ window.MEEG_CONFIG={
   VERSION_POLL_MS:300000    /* new-version check (5 min) */
 };
 </script>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 54 46'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2300e5d4'/%3E%3Cstop offset='100%25' stop-color='%230f8fff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpolygon points='0,4 30,4 21,16 0,16' fill='url(%23g)'/%3E%3Cpolygon points='5,19 35,19 26,31 5,31' fill='url(%23g)'/%3E%3Cpolygon points='10,34 40,34 31,46 10,46' fill='url(%23g)'/%3E%3C/svg%3E"/>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 -13.4 63 63'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%230a62e8'/%3E%3Cstop offset='.25' stop-color='%230470ff'/%3E%3Cstop offset='1' stop-color='%230428d8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpolygon points='9.3,0 32.5,0 63,30.5 39.6,30.5' fill='url(%23g)'/%3E%3Cpolygon points='0,16.5 20.1,16.5 39.6,36.2 19.6,36.2' fill='url(%23g)'/%3E%3C/svg%3E"/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://docs.google.com" crossorigin>
 <link rel="preconnect" href="https://script.google.com" crossorigin>
@@ -103,13 +103,13 @@ html body #splash{transition:opacity .45s ease,transform .45s ease!important}
 #splash .splash-svg{animation-duration:.5s!important}
 #splash .splash-brand{animation-delay:.05s!important;animation-duration:.4s!important}
 #splash .splash-sub{animation-delay:.12s!important;animation-duration:.4s!important}
-.splash-svg{animation:splashSpin .9s cubic-bezier(.34,1.56,.64,1) both;filter:drop-shadow(0 0 24px rgba(0,229,212,.6));}
+.splash-svg{animation:splashSpin .9s cubic-bezier(.34,1.56,.64,1) both;filter:drop-shadow(0 0 24px rgba(5,112,255,.6));}
 @keyframes splashSpin{from{opacity:0;transform:rotate(-25deg) scale(.6)}to{opacity:1;transform:rotate(0) scale(1)}}
 .splash-brand{font-family:var(--display);font-size:2.2rem;font-weight:700;letter-spacing:4px;animation:splashFade .6s ease .3s both;background:linear-gradient(90deg,#00e5d4,#2e9bff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;filter:drop-shadow(0 2px 10px rgba(0,229,212,.4));}
 .splash-sub{font-family:var(--mono);font-size:.72rem;color:#7fd8f0;letter-spacing:4px;text-transform:uppercase;animation:splashFade .6s ease .5s both;}
 @keyframes splashFade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .splash-logo-wrap{position:relative;display:flex;}
-.splash-logo-wrap::after{content:'';position:absolute;inset:-20px;border-radius:50%;border:1px solid rgba(0,229,212,.5);opacity:0;animation:swRing 2.2s ease-out .7s infinite;}
+.splash-logo-wrap::after{content:'';position:absolute;inset:-20px;border-radius:50%;border:1px solid rgba(5,112,255,.5);opacity:0;animation:swRing 2.2s ease-out .7s infinite;}
 @keyframes swRing{from{opacity:.75;transform:scale(.65)}to{opacity:0;transform:scale(1.55)}}
 .sw-name{font-family:var(--display);font-size:2.4rem;font-weight:700;letter-spacing:2px;color:#fff;display:flex;flex-wrap:wrap;justify-content:center;text-shadow:0 0 30px rgba(0,229,212,.5);min-height:2.9rem;}
 .sw-label{font-family:var(--mono);font-size:.66rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#00e5d4;padding:4px 16px;border-radius:999px;border:1px solid rgba(0,229,212,.45);background:rgba(0,229,212,.08);animation:splashFade .5s ease 2s both;}
@@ -852,7 +852,7 @@ html{scroll-behavior:smooth}body{background-attachment:scroll!important}
 :root{--g-bg:rgba(255,255,255,.5);--g-bg2:rgba(255,255,255,.38);--g-brd:rgba(255,255,255,.75);--g-hi:inset 0 1px 0 rgba(255,255,255,.9);--g-sh:0 8px 32px rgba(21,82,184,.12);--g-sh-h:0 18px 44px rgba(13,148,136,.22);--g-grad:linear-gradient(135deg,#00e5d4,#0f8fff);--spring:cubic-bezier(.34,1.56,.64,1)}
 html[data-theme="dark"]{--g-bg:rgba(10,24,38,.42);--g-bg2:rgba(10,24,38,.3);--g-brd:rgba(140,240,235,.15);--g-hi:inset 0 1px 0 rgba(255,255,255,.09);--g-sh:0 10px 36px rgba(0,0,0,.45);--g-sh-h:0 18px 50px rgba(0,229,212,.2),0 0 0 1px rgba(0,229,212,.28)}
 html body{background:radial-gradient(60% 50% at 8% 0%,rgba(0,229,212,.3),transparent 62%),radial-gradient(55% 50% at 100% 100%,rgba(15,143,255,.3),transparent 62%),radial-gradient(40% 40% at 88% 8%,rgba(99,96,230,.18),transparent 60%),linear-gradient(160deg,var(--bg-1),var(--bg-2))!important;background-attachment:fixed!important}
-html body::after{content:'';position:fixed;z-index:-1;right:-6vmin;bottom:-8vmin;width:78vmin;height:66vmin;pointer-events:none;opacity:.13;filter:blur(1.5px);transform:rotate(-8deg);background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 54 46'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%2300e5d4'/%3E%3Cstop offset='1' stop-color='%230f8fff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpolygon points='0,4 30,4 21,16 0,16' fill='url(%23g)'/%3E%3Cpolygon points='5,19 35,19 26,31 5,31' fill='url(%23g)'/%3E%3Cpolygon points='10,34 40,34 31,46 10,46' fill='url(%23g)'/%3E%3C/svg%3E") center/contain no-repeat}
+html body::after{content:'';position:fixed;z-index:-1;right:-6vmin;bottom:-8vmin;width:78vmin;height:66vmin;pointer-events:none;opacity:.13;filter:blur(1.5px);transform:rotate(-8deg);background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 63 36.2'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%230a62e8'/%3E%3Cstop offset='.25' stop-color='%230470ff'/%3E%3Cstop offset='1' stop-color='%230428d8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpolygon points='9.3,0 32.5,0 63,30.5 39.6,30.5' fill='url(%23g)'/%3E%3Cpolygon points='0,16.5 20.1,16.5 39.6,36.2 19.6,36.2' fill='url(%23g)'/%3E%3C/svg%3E") center/contain no-repeat}
 html[data-theme="dark"] body::after{opacity:.17}
 
 /* glass surfaces */
@@ -884,7 +884,7 @@ html body .loc-tab.act .tab-cnt{color:#fff}
 /* KPI cards: gradient icon chip + big mono value */
 html body .loc-stat{position:relative;overflow:hidden;animation:gIn .6s var(--spring) both}
 html body .loc-stat:nth-child(2){animation-delay:.07s}html body .loc-stat:nth-child(3){animation-delay:.14s}html body .loc-stat:nth-child(4){animation-delay:.21s}html body .loc-stat:nth-child(5){animation-delay:.28s}
-html body .loc-stat::before{content:'';position:absolute;top:16px;right:16px;width:34px;height:34px;border-radius:11px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-12 -10 78 66'%3E%3Cg fill='white' fill-opacity='.9'%3E%3Cpolygon points='0,4 30,4 21,16 0,16'/%3E%3Cpolygon points='5,19 35,19 26,31 5,31' opacity='.7'/%3E%3Cpolygon points='10,34 40,34 31,46 10,46' opacity='.45'/%3E%3C/g%3E%3C/svg%3E") center/62% no-repeat,var(--g-grad);box-shadow:0 6px 16px rgba(15,143,255,.3)}
+html body .loc-stat::before{content:'';position:absolute;top:16px;right:16px;width:34px;height:34px;border-radius:11px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-22.5 -35.9 108 108'%3E%3Cg fill='white' fill-opacity='.9'%3E%3Cpolygon points='9.3,0 32.5,0 63,30.5 39.6,30.5'/%3E%3Cpolygon points='0,16.5 20.1,16.5 39.6,36.2 19.6,36.2' opacity='.7'/%3E%3C/g%3E%3C/svg%3E") center/62% no-repeat,var(--g-grad);box-shadow:0 6px 16px rgba(15,143,255,.3)}
 html body .loc-stat:nth-child(4n+2)::before{background-color:#0d9488;background-image:inherit;filter:hue-rotate(-18deg)}
 html body .loc-stat:nth-child(4n+3)::before{filter:hue-rotate(40deg)}
 html body .loc-stat:nth-child(4n)::before{filter:hue-rotate(95deg)}
@@ -918,7 +918,7 @@ html body .sec thead th{backdrop-filter:blur(10px)}
 :root{--wrap:1320px}
 /* 1) KPI chip: in-flow above the number (no more overlap), equal card widths */
 html body .loc-stat{display:flex!important;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-width:128px;padding:16px 20px!important}
-html body .loc-stat::before{position:static!important;display:block;width:32px;height:32px;margin:0 auto 10px;filter:none!important;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-12 -10 78 66'%3E%3Cg fill='white' fill-opacity='.92'%3E%3Cpolygon points='0,4 30,4 21,16 0,16'/%3E%3Cpolygon points='5,19 35,19 26,31 5,31' opacity='.7'/%3E%3Cpolygon points='10,34 40,34 31,46 10,46' opacity='.45'/%3E%3C/g%3E%3C/svg%3E"),var(--chip,var(--g-grad))!important;background-size:60%,100%!important;background-position:center!important;background-repeat:no-repeat!important}
+html body .loc-stat::before{position:static!important;display:block;width:32px;height:32px;margin:0 auto 10px;filter:none!important;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-22.5 -35.9 108 108'%3E%3Cg fill='white' fill-opacity='.92'%3E%3Cpolygon points='9.3,0 32.5,0 63,30.5 39.6,30.5'/%3E%3Cpolygon points='0,16.5 20.1,16.5 39.6,36.2 19.6,36.2' opacity='.7'/%3E%3C/g%3E%3C/svg%3E"),var(--chip,var(--g-grad))!important;background-size:60%,100%!important;background-position:center!important;background-repeat:no-repeat!important}
 html body .loc-stat:nth-child(4n+1){--chip:linear-gradient(135deg,#00e5d4,#0f8fff)}
 html body .loc-stat:nth-child(4n+2){--chip:linear-gradient(135deg,#10b981,#0d9488)}
 html body .loc-stat:nth-child(4n+3){--chip:linear-gradient(135deg,#0f8fff,#6360e6)}
@@ -972,7 +972,7 @@ html.g-enter body .sec:nth-child(2){animation-delay:.08s!important}html.g-enter 
 <style id="glass-auth">
 /* shared cinematic backdrop (always dark, independent of app theme) */
 html body :is(#loginScreen,#splash){background:linear-gradient(rgba(0,229,212,.045) 1px,transparent 1px) 0 0/34px 34px,linear-gradient(90deg,rgba(0,229,212,.045) 1px,transparent 1px) 0 0/34px 34px,radial-gradient(60% 55% at 12% 0%,rgba(0,229,212,.32),transparent 62%),radial-gradient(55% 55% at 100% 100%,rgba(15,143,255,.34),transparent 62%),radial-gradient(40% 40% at 90% 8%,rgba(99,96,230,.2),transparent 60%),#050a10!important;color:#eafcfb}
-html body :is(#loginScreen,#splash)::before{content:'';position:absolute;z-index:-1;right:-8vmin;bottom:-10vmin;width:80vmin;height:68vmin;opacity:.12;transform:rotate(-8deg);pointer-events:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 54 46'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%2300e5d4'/%3E%3Cstop offset='1' stop-color='%230f8fff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpolygon points='0,4 30,4 21,16 0,16' fill='url(%23g)'/%3E%3Cpolygon points='5,19 35,19 26,31 5,31' fill='url(%23g)'/%3E%3Cpolygon points='10,34 40,34 31,46 10,46' fill='url(%23g)'/%3E%3C/svg%3E") center/contain no-repeat}
+html body :is(#loginScreen,#splash)::before{content:'';position:absolute;z-index:-1;right:-8vmin;bottom:-10vmin;width:80vmin;height:68vmin;opacity:.12;transform:rotate(-8deg);pointer-events:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 63 36.2'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%230a62e8'/%3E%3Cstop offset='.25' stop-color='%230470ff'/%3E%3Cstop offset='1' stop-color='%230428d8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpolygon points='9.3,0 32.5,0 63,30.5 39.6,30.5' fill='url(%23g)'/%3E%3Cpolygon points='0,16.5 20.1,16.5 39.6,36.2 19.6,36.2' fill='url(%23g)'/%3E%3C/svg%3E") center/contain no-repeat}
 /* ---------- Sign in ---------- */
 html body #loginScreen .login-card{background:rgba(10,24,38,.55)!important;backdrop-filter:blur(26px) saturate(170%)!important;-webkit-backdrop-filter:blur(26px) saturate(170%)!important;border:1px solid rgba(140,240,235,.18)!important;border-radius:28px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 24px 70px rgba(0,0,0,.55),0 0 60px rgba(0,229,212,.1)!important;width:min(400px,92vw)!important;padding:40px 32px 28px!important;animation:authIn .7s cubic-bezier(.22,1,.36,1) both}
 @keyframes authIn{from{opacity:0;transform:translate3d(0,22px,0) scale(.97)}to{opacity:1;transform:none}}
@@ -1270,7 +1270,7 @@ html body #loginScreen .login-card{display:grid!important;grid-template-columns:
 .lg-form{position:relative;display:flex;flex-direction:column;min-width:0;padding:42px 44px 28px}
 .lg-brand{display:flex;align-items:center;gap:12px;margin-bottom:30px}
 .lg-logo{width:42px;height:42px;border-radius:13px;background:linear-gradient(135deg,#00e5d4,#0f8fff);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(0,229,212,.35);flex:none}
-.lg-logo svg{width:22px;height:19px}
+.lg-logo svg{width:24px;height:14px}
 .lg-wordmark{font-family:var(--display);font-weight:700;font-size:1.05rem;letter-spacing:5px;line-height:1;background:linear-gradient(90deg,#5cf3e2,#2e9bff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
 .lg-wordmark small{display:block;margin-top:5px;font-family:var(--mono);font-weight:500;font-size:.54rem;letter-spacing:2.6px;text-transform:uppercase;-webkit-text-fill-color:#6f97a6;color:#6f97a6}
 .lg-h{font-family:var(--font);font-size:1.85rem;font-weight:700;color:#fff;letter-spacing:-.02em;line-height:1.1}
@@ -1363,8 +1363,8 @@ html.lite .lg-dots,html.lite .lg-arc,html.lite .lg-core{animation:none!important
   <div class="login-card" id="loginCard">
     <div class="lg-form" id="loginFormPane">
       <div class="lg-brand">
-        <div class="lg-logo"><svg viewBox="0 0 54 46"><polygon points="0,4 30,4 21,16 0,16" fill="#04141c"/><polygon points="5,19 35,19 26,31 5,31" fill="#04141c" opacity=".75"/><polygon points="10,34 40,34 31,46 10,46" fill="#04141c" opacity=".5"/></svg></div>
-        <div class="lg-wordmark">MEEG<small>Productivity</small></div>
+        <div class="lg-logo"><svg viewBox="0 0 63 36.2"><polygon points="9.3,0 32.5,0 63,30.5 39.6,30.5" fill="#04141c"/><polygon points="0,16.5 20.1,16.5 39.6,36.2 19.6,36.2" fill="#04141c" opacity=".75"/></svg></div>
+        <div class="lg-wordmark">METI<small>Micro Engineering Tech Inc.</small></div>
       </div>
       <h1 class="lg-h">Welcome back</h1>
       <p class="lg-p">Sign in to continue to your dashboard.</p>
@@ -1445,18 +1445,17 @@ html.lite .lg-dots,html.lite .lg-arc,html.lite .lg-core{animation:none!important
   </div>
 </div>
 <div class="orb orb-1"></div><div class="orb orb-2"></div>
-<div id="splash" role="status" aria-live="polite" aria-label="Loading MEEG">
+<div id="splash" role="status" aria-live="polite" aria-label="Loading METI">
   <div style="display:flex;flex-direction:column;align-items:center;gap:18px;">
-    <div class="splash-logo-wrap"><svg class="splash-svg" width="86" height="72" viewBox="0 0 54 46" fill="none">
+    <div class="splash-logo-wrap"><svg class="splash-svg" width="100" height="58" viewBox="0 0 63 36.2" fill="none">
       <defs>
-        <linearGradient id="sg1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00e5d4"/><stop offset="100%" stop-color="#0f8fff"/></linearGradient>
+        <linearGradient id="sg1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#0a62e8"/><stop offset="25%" stop-color="#1a82ff"/><stop offset="100%" stop-color="#0a3cf0"/></linearGradient>
       </defs>
-      <polygon points="0,4 30,4 21,16 0,16" fill="url(#sg1)"/>
-      <polygon points="5,19 35,19 26,31 5,31" fill="url(#sg1)"/>
-      <polygon points="10,34 40,34 31,46 10,46" fill="url(#sg1)"/>
+      <polygon points="9.3,0 32.5,0 63,30.5 39.6,30.5" fill="url(#sg1)"/>
+      <polygon points="0,16.5 20.1,16.5 39.6,36.2 19.6,36.2" fill="url(#sg1)"/>
     </svg></div>
-    <div class="splash-brand">MEEG</div>
-    <div class="splash-sub">METI Company · Productivity</div>
+    <div class="splash-brand">METI</div>
+    <div class="splash-sub">Micro Engineering Tech Inc. · Productivity</div>
   </div>
   <div class="sf-wrap" id="sfWrap">
     <div class="sf-ring">
@@ -1478,16 +1477,15 @@ html.lite .lg-dots,html.lite .lg-arc,html.lite .lg-core{animation:none!important
   <div class="hdr-left">
     <div class="meeg-logo">
       <div class="logo-orb">
-        <svg width="24" height="20" viewBox="0 0 54 46" fill="none">
-          <polygon points="0,4 30,4 21,16 0,16" fill="currentColor"/>
-          <polygon points="5,19 35,19 26,31 5,31" fill="currentColor" opacity=".7"/>
-          <polygon points="10,34 40,34 31,46 10,46" fill="currentColor" opacity=".45"/>
+        <svg width="26" height="15" viewBox="0 0 63 36.2" fill="none">
+          <polygon points="9.3,0 32.5,0 63,30.5 39.6,30.5" fill="currentColor"/>
+          <polygon points="0,16.5 20.1,16.5 39.6,36.2 19.6,36.2" fill="currentColor" opacity=".7"/>
         </svg>
       </div>
-      <div class="meeg-wordmark"><div class="brand">MEEG</div><div class="sub">METI Company</div></div>
+      <div class="meeg-wordmark"><div class="brand">METI</div><div class="sub">Micro Engineering Tech Inc.</div></div>
     </div>
     <div class="hdr-title">
-      <h1>MEEG <span>Productivity</span></h1>
+      <h1>METI <span>Productivity</span></h1>
       <p>Productivity Dashboard · Live Tracking</p>
     </div>
   </div>
@@ -4126,7 +4124,7 @@ async function shotQualityTotals(btn){
     if(document.fonts&&document.fonts.ready)await document.fonts.ready;
     const bg=(getComputedStyle(document.documentElement).getPropertyValue('--bg')||'').trim()||'#eef2f7';
     stage=document.createElement('div');stage.className='shot-stage';stage.style.background=bg;
-    stage.innerHTML=`<div class="shot-head"><div class="shot-title">📊 MEEG Quality — Shift &amp; Workforce</div><div class="shot-sub">${esc(src.getAttribute('data-week')||'')} · ${esc(new Date().toLocaleString())}</div></div>`;
+    stage.innerHTML=`<div class="shot-head"><div class="shot-title">📊 METI Quality — Shift &amp; Workforce</div><div class="shot-sub">${esc(src.getAttribute('data-week')||'')} · ${esc(new Date().toLocaleString())}</div></div>`;
     const clone=src.cloneNode(true);clone.removeAttribute('id');
     clone.querySelectorAll('.no-shot').forEach(e=>e.remove());
     stage.appendChild(clone);
@@ -4138,7 +4136,7 @@ async function shotQualityTotals(btn){
     const blob=await new Promise(r=>canvas.toBlob(r,'image/png'));
     if(!blob)throw new Error('empty image');
     const wk=(src.getAttribute('data-week')||'').replace('Week of Mon ','wk_');
-    downloadBlob(blob,'MEEG_Quality_Totals_'+expSafe(wk)+(wk?'_':'')+expStamp()+'.png');
+    downloadBlob(blob,'METI_Quality_Totals_'+expSafe(wk)+(wk?'_':'')+expStamp()+'.png');
     let copied=false;
     try{if(navigator.clipboard&&window.ClipboardItem){await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);copied=true;}}catch(e){}
     showToast(copied?'📸 Screenshot saved & copied to clipboard':'📸 Screenshot saved');
@@ -4164,7 +4162,7 @@ async function shotTeamSheet(btn){
     const SN={Morning:'Morning',Night:'Night',Overnight:'Overnight'};
     const filt=teamSheetShift?SN[teamSheetShift]:'All shifts';
     stage=document.createElement('div');stage.className='shot-stage';stage.style.background=bg;stage.style.width='900px';
-    stage.innerHTML=`<div class="shot-head"><div class="shot-title">👥 MEEG Quality — Teams (${esc(filt)})</div><div class="shot-sub">${esc(src.getAttribute('data-week')||'')} · ${esc(new Date().toLocaleString())}</div></div>`;
+    stage.innerHTML=`<div class="shot-head"><div class="shot-title">👥 METI Quality — Teams (${esc(filt)})</div><div class="shot-sub">${esc(src.getAttribute('data-week')||'')} · ${esc(new Date().toLocaleString())}</div></div>`;
     const clone=src.cloneNode(true);clone.removeAttribute('id');
     clone.querySelectorAll('.no-shot').forEach(e=>e.remove());
     clone.querySelectorAll('button').forEach(e=>e.remove());   // M / N / ON filter buttons aren't needed in the image
@@ -4180,7 +4178,7 @@ async function shotTeamSheet(btn){
     const blob=await new Promise(r=>canvas.toBlob(r,'image/png'));
     if(!blob)throw new Error('empty image');
     const wk=(src.getAttribute('data-week')||'').replace('Week of Mon ','wk_');
-    downloadBlob(blob,'MEEG_Quality_Teams_'+(teamSheetShift?teamSheetShift+'_':'')+expSafe(wk)+(wk?'_':'')+expStamp()+'.png');
+    downloadBlob(blob,'METI_Quality_Teams_'+(teamSheetShift?teamSheetShift+'_':'')+expSafe(wk)+(wk?'_':'')+expStamp()+'.png');
     let copied=false;
     try{if(navigator.clipboard&&window.ClipboardItem){await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);copied=true;}}catch(e){}
     showToast(copied?'📸 Screenshot saved & copied to clipboard':'📸 Screenshot saved');
@@ -4234,7 +4232,7 @@ async function shotTopPerf(kind,btn,ctxId){
       onclone:d=>{const x=d.querySelector('.shot-stage');if(x){x.style.left='0';x.style.top='0';}}});
     const blob=await new Promise(r=>canvas.toBlob(r,'image/png'));
     if(!blob)throw new Error('empty image');
-    downloadBlob(blob,'MEEG_Top_'+(isQ?'QTC':'Labelers')+(locLbl?'_'+expSafe(locLbl):'')+'_'+expSafe(wk)+(wk?'_':'')+expStamp()+'.png');
+    downloadBlob(blob,'METI_Top_'+(isQ?'QTC':'Labelers')+(locLbl?'_'+expSafe(locLbl):'')+'_'+expSafe(wk)+(wk?'_':'')+expStamp()+'.png');
     let copied=false;
     try{if(navigator.clipboard&&window.ClipboardItem){await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);copied=true;}}catch(e){}
     showToast(copied?'📸 Screenshot saved & copied to clipboard':'📸 Screenshot saved');
@@ -4446,7 +4444,7 @@ window.renderLocSection=function(wrap,locName,rows){_r.apply(this,arguments);try
 /* Screenshots: replace the plain header with a branded one (logo, title, time, active filters) and stack the layout for phones.
    Runs the moment a .shot-stage is inserted, before the capture happens. Presentation only. */
 (function(){
-var LOGO='<svg viewBox="0 0 54 46"><defs><linearGradient id="shg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#00e5d4"/><stop offset="1" stop-color="#0f8fff"/></linearGradient></defs><polygon points="0,4 30,4 21,16 0,16" fill="url(#shg)"/><polygon points="5,19 35,19 26,31 5,31" fill="url(#shg)"/><polygon points="10,34 40,34 31,46 10,46" fill="url(#shg)"/></svg>';
+var LOGO='<svg viewBox="0 0 63 36.2"><defs><linearGradient id="shg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0a62e8"/><stop offset=".25" stop-color="#0470ff"/><stop offset="1" stop-color="#0428d8"/></linearGradient></defs><polygon points="9.3,0 32.5,0 63,30.5 39.6,30.5" fill="url(#shg)"/><polygon points="0,16.5 20.1,16.5 39.6,36.2 19.6,36.2" fill="url(#shg)"/></svg>';
 function esc(t){return String(t).replace(/[&<>]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;"}[c]})}
 function filters(){
   var out=[];
@@ -4468,7 +4466,7 @@ function restyle(st){
     var f=own?JSON.parse(st.dataset.chips):filters();
     h.dataset.branded="1";
     var live=document.querySelector(".hdr .meeg-logo");
-    var brand=live?live.outerHTML:(LOGO+'<span>MEEG Productivity</span>');
+    var brand=live?live.outerHTML:(LOGO+'<span>METI Productivity</span>');
     h.innerHTML='<div class="sh-brand">'+brand+'</div>'
       +'<div class="sh-title">'+(t?t.innerHTML:"")+'</div>'
       +'<div class="sh-sub">'+(u?u.innerHTML:"")+'</div>'
@@ -4946,7 +4944,7 @@ async function anShot(btn){
       if(anF.q)chips.push('Search: '+anF.q);
       stage.dataset.chips=JSON.stringify(chips);}
     const rng=(anF.from||anF.to)?(anF.from||'…')+' → '+(anF.to||'…'):'All dates';
-    stage.innerHTML=`<div class="shot-head"><div class="shot-title">⭐ MEEG Analysis — Ratings by ${anGroup==='QC'?'QTC':'Labeler'}</div><div class="shot-sub">${esc(rng)}${anF.shift?' · Shift '+anF.shift:''} · ${esc(new Date().toLocaleString())}</div></div>`;
+    stage.innerHTML=`<div class="shot-head"><div class="shot-title">⭐ METI Analysis — Ratings by ${anGroup==='QC'?'QTC':'Labeler'}</div><div class="shot-sub">${esc(rng)}${anF.shift?' · Shift '+anF.shift:''} · ${esc(new Date().toLocaleString())}</div></div>`;
     const clone=src.cloneNode(true);clone.removeAttribute('id');
     clone.querySelectorAll('.tbl-w').forEach(e=>{e.style.maxHeight='none';e.style.overflow='visible';});
     stage.appendChild(clone);
@@ -4960,7 +4958,7 @@ async function anShot(btn){
     const scale=Math.min(5,Math.max(3,(window.devicePixelRatio||1)*2));
     const canvas=await html2canvas(stage,{scale,backgroundColor:bg,useCORS:true,logging:false,scrollX:0,scrollY:0,onclone:d=>{const x=d.querySelector('.shot-stage');if(x){x.style.left='0';x.style.top='0';}}});
     const blob=await new Promise(r=>canvas.toBlob(r,'image/png'));if(!blob)throw new Error('empty image');
-    downloadBlob(blob,'MEEG_Analysis_Ratings_'+expStamp()+'.png');
+    downloadBlob(blob,'METI_Analysis_Ratings_'+expStamp()+'.png');
     let copied=false;try{if(navigator.clipboard&&window.ClipboardItem){await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);copied=true;}}catch(e){}
     showToast(copied?'📸 Screenshot saved & copied to clipboard':'📸 Screenshot saved');
   }catch(e){showToast('⚠️ Screenshot failed'+(e&&e.message?' — '+e.message:''));}
