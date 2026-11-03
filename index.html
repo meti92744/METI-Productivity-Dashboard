@@ -30,7 +30,7 @@
 window.MEEG_CONFIG={
   SHEET_ID:'1g9mPKQMactJKC-BP0Ik3Cw72PLUXCb4VTKFbHYLjc5I',
   ARCHIVE_SHEET_ID:'1BSeiRLiRTSmH_Et0B8TQAPKsuY98CVSB-gcg6ai51YQ',
-  AUTH_API_URL:'https://script.google.com/macros/s/AKfycbxV6t-X26Z8w2pMW1GjyJ7W5_6j2Z3E7401LpwsgBTL5fXqPAvBVHPqNMuVEyWgsa1-/exec',
+  AUTH_API_URL:'https://script.google.com/macros/s/AKfycbys8TQSsCOlH2qXAmoXv-yDOVh7cU7MeO5q5Mcxqmg/dev',
   REFRESH_INTERVAL:60,      /* seconds between auto data refreshes */
   USERS_WATCH_MS:30000,     /* access re-check */
   QUALITY_POLL_MS:30000,    /* Export tab check */
@@ -1776,7 +1776,7 @@ async function attemptLogin(){
       errEl.textContent='Checking…';lgSteps(0,0,'Verifying email…');
       let r;
       try{r=await authCall({action:'status',email:raw});}catch(e){return fail('Could not reach the server — check your connection and try again');}
-      if(!r||!r.ok)return fail('Something went wrong — try again');
+      if(!r||!r.ok)return fail('Something went wrong — try again'+(r&&r.error?' ('+r.error+(r.detail?': '+r.detail:'')+')':''));
       if(!r.allowed){
         if(r.state==='pending')return fail('Your request is still waiting for approval ⏳',eIn);
         if(r.state==='rejected')return fail('Your request was declined 🚫',eIn);
