@@ -4987,12 +4987,24 @@ function renderAnalysis(mc){
       body+=`<div class="sec" style="margin:0 0 12px"><div class="sec-hd"><div class="sec-t">${type}</div><div class="sec-m">${names.reduce((s,n)=>s+RATES.reduce((x,k)=>x+(g[n][k]||0),0),0)} tasks</div></div><div class="tbl-w"><table class="an-t"><tr><th>${anGroup==='QC'?'QTC':anGroup}</th>${RATES.map(k=>`<th class="c">${k}</th>`).join('')}<th class="c">Total</th><th class="c">Score %</th><th class="c">Mix</th></tr>`+
         names.map(n=>{const c=g[n],T=RATES.reduce((s,k)=>s+(c[k]||0),0);RATES.forEach(k=>tot[k]=(tot[k]||0)+(c[k]||0));return `<tr><td>${esc(n)}</td>${RATES.map(k=>`<td class="c">${c[k]||0}</td>`).join('')}<td class="c"><b>${T}</b></td><td class="c">${anScore(c).toFixed(1)}%</td><td>${anMix(c)}</td></tr>`;}).join('')+
         (names.length?`<tr class="tot"><td>TOTAL</td>${RATES.map(k=>`<td class="c">${tot[k]||0}</td>`).join('')}<td class="c">${RATES.reduce((s,k)=>s+(tot[k]||0),0)}</td><td class="c">${anScore(tot).toFixed(1)}%</td><td>${anMix(tot)}</td></tr>`:'<tr><td colspan="8" style="text-align:center;color:var(--muted)">No rated tasks</td></tr>')+'</table></div></div>';});body+='</div><div id="anTrendBox">'+anChart(rated)+'</div>';}else if(anView==='analysts'){
-    const done=tasks.filter(t=>anLog[t.id]);meta=done.length+' analyzed';const per={};const days={};
-    done.forEach(t=>{const l=anLog[t.id],a=l.analyst||'—';per[a]=per[a]||{Lidar:0,'Lane Line':0,issues:0,total:0};per[a][t.type]++;per[a].total++;if(l.issue)per[a].issues++;const d=l.date||t.day;(days[d]=days[d]||{})[a]=(days[d][a]||0)+1;});
+    /* count straight from the Analysis Log (same as the sheet) — a logged task that is not in the loaded dashboard data is still counted */
+    const tById={};all.forEach(t=>{tById[t.id]=t;});
+    const _sv=[anF.from,anF.to];anF.from=anF.to='';const okIds=new Set(anFiltered(all).map(t=>t.id));anF.from=_sv[0];anF.to=_sv[1];
+    const tf=!!(anF.lab.size||anF.qc.size||anF.type.size||anF.pass.size||anF.shift||anF.mine||anF.q||anF.status);
+    let doneN=0,orphan=0;const per={};const days={};
+    Object.keys(anLog).forEach(id=>{const l=anLog[id],t=tById[id];
+      if(t?!okIds.has(id):tf)return;
+      const d=String(l.date||(t&&t.day)||'').trim();
+      if(anF.from&&d<anF.from)return;if(anF.to&&d>anF.to)return;
+      const a=l.analyst||'—';per[a]=per[a]||{Lidar:0,'Lane Line':0,issues:0,total:0};
+      if(t)per[a][t.type]++;else orphan++;
+      per[a].total++;doneN++;if(l.issue)per[a].issues++;
+      (days[d]=days[d]||{})[a]=(days[d][a]||0)+1;});
+    meta=doneN+' analyzed';
     const an=Object.keys(per).sort();
     body=anDateBar()+`<div class="sec" style="margin:0 0 12px"><div class="sec-hd"><div class="sec-t">👥 Total per analyst</div></div><div class="tbl-w"><table class="an-t"><tr><th>Analyst</th><th class="c">Lidar</th><th class="c">Lane Line</th><th class="c">Issues</th><th class="c">Total</th></tr>`+
       an.map(a=>`<tr><td>${esc(a)}</td><td class="c">${per[a].Lidar}</td><td class="c">${per[a]['Lane Line']}</td><td class="c">${per[a].issues}</td><td class="c"><b>${per[a].total}</b></td></tr>`).join('')+
-      `</table></div></div><div class="sec"><div class="sec-hd"><div class="sec-t">📅 Per day</div></div><div class="tbl-w"><table class="an-t"><tr><th>Date</th>${an.map(a=>`<th class="c">${esc(a)}</th>`).join('')}<th class="c">Total</th></tr>`+
+      `</table></div>${orphan?`<div class="an-note">${orphan} analyzed task${orphan>1?'s are':' is'} not in the loaded dashboard data (counted in Total, type unknown)</div>`:''}</div><div class="sec"><div class="sec-hd"><div class="sec-t">📅 Per day</div></div><div class="tbl-w"><table class="an-t"><tr><th>Date</th>${an.map(a=>`<th class="c">${esc(a)}</th>`).join('')}<th class="c">Total</th></tr>`+
       Object.keys(days).sort().reverse().map(d=>`<tr><td>${d}</td>${an.map(a=>`<td class="c">${days[d][a]||0}</td>`).join('')}<td class="c"><b>${Object.values(days[d]).reduce((s,x)=>s+x,0)}</b></td></tr>`).join('')+'</table></div></div>';
   }else{
     const iss=tasks.filter(t=>anLog[t.id]&&anLog[t.id].issue);meta=iss.length+' issues';
