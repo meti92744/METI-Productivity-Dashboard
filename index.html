@@ -30,7 +30,7 @@
 window.MEEG_CONFIG={
   SHEET_ID:'1g9mPKQMactJKC-BP0Ik3Cw72PLUXCb4VTKFbHYLjc5I',
   ARCHIVE_SHEET_ID:'1BSeiRLiRTSmH_Et0B8TQAPKsuY98CVSB-gcg6ai51YQ',
-  AUTH_API_URL:'https://script.google.com/macros/s/AKfycbwgwAHWdMuEUh-Ep5TAQmJ79MB6jxgpzT30wQ4_x7I61sAlRkWcMMQtsv9PSqMbCa5-/exec',
+  AUTH_API_URL:'https://script.google.com/macros/s/AKfycbxV6t-X26Z8w2pMW1GjyJ7W5_6j2Z3E7401LpwsgBTL5fXqPAvBVHPqNMuVEyWgsa1-/exec',
   REFRESH_INTERVAL:60,      /* seconds between auto data refreshes */
   USERS_WATCH_MS:30000,     /* access re-check */
   QUALITY_POLL_MS:30000,    /* Export tab check */
@@ -1613,6 +1613,10 @@ function checkUsersAccess(){
     else if(r&&r.ok){
       _verifyFails=0;_naStrikes=0;keepToken(r);
       loadUsers(true).then(()=>renderUserChip(false)).catch(()=>{}); // picks up renamed users / role changes too
+    }else if(r&&r.error==='bad_token'){
+      /* password was reset (or token invalid/expired) → sign out right away */
+      try{sessionStorage.setItem('meeg_login_msg','Your password was changed — please sign in again 🔒');}catch(e){}
+      logoutUser();
     }else if(authSoftFail(r)){
       /* server busy / quota / bad reply → stay signed in, check again later */
     }else if(!(r&&r.error==='not_allowed')&&++_verifyFails<3){
