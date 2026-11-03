@@ -4686,7 +4686,7 @@ const RATE_COL={Excellent:'#16a34a',Good:'#2563eb',Average:'#f59e0b',Poor:'#dc26
 function anMix(c){const T=RATES.reduce((s,k)=>s+(c[k]||0),0);if(!T)return '';
   return '<div class="an-mix" title="'+RATES.map(k=>k+' '+Math.round((c[k]||0)/T*100)+'%').join(' · ')+'">'+RATES.filter(k=>c[k]).map(k=>'<i style="width:'+(c[k]/T*100).toFixed(1)+'%;background:'+RATE_COL[k]+'"></i>').join('')+'</div>';}
 function anLegend(){return '<div class="an-leg">'+RATES.map(k=>'<span><i style="background:'+RATE_COL[k]+'"></i>'+k+'</span>').join('')+'</div><div class="an-leg" style="margin-top:-4px"><span>↕ Ranked by weighted score — few tasks pull a name toward the average, so 1 Excellent task does not beat 40 good ones. Score % is the plain score.</span></div>';}
-let anView='tasks',anGroup='QC',anLog={},anLogLoaded=false,anF={from:'',to:'',lab:new Set(),qc:new Set(),q:'',type:new Set(),pass:new Set(),status:'',shift:'',mine:false,chart:''};
+let anView='tasks',anGroup='QC',anLog={},anLogRows=[],anLogLoaded=false,anF={from:'',to:'',lab:new Set(),qc:new Set(),q:'',type:new Set(),pass:new Set(),status:'',shift:'',mine:false,chart:''};
 function anCol(n){return hdrs.findIndex(h=>h.toLowerCase()===n.toLowerCase());}
 function anYmd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function anTasks(){
@@ -4701,14 +4701,14 @@ function anWScore(cnt,prior){const n=RATES.reduce((s,k)=>s+(cnt[k]||0),0);return
 function anScore(cnt){const n=RATES.reduce((s,k)=>s+(cnt[k]||0),0);return n?RATES.reduce((s,k)=>s+(cnt[k]||0)*RATE_W[k],0)/n*100:0;}
 function anLoadLog(cb){
   fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&headers=1&sheet=${encodeURIComponent(ANALYSIS_LOG_SHEET)}&_=${Date.now()}`,{cache:'no-store'})
-   .then(r=>r.ok?r.text():Promise.reject()).then(t=>{const rows=parseCSV(t);if(rows.length&&!/task id/i.test(rows[0].join(',')))throw 0;anLog={};if(rows.length>1){const h=rows[0].map(x=>x.trim().toLowerCase());
-     const ix=n=>h.indexOf(n);rows.slice(1).forEach(r=>{const id=String(r[ix('task id')]||'').trim();if(id)anLog[id]={analyst:r[ix('analyst')]||'',lr:r[ix('labeler rating')]||'',qr:r[ix('qc rating')]||'',issue:String(r[ix('issue')]||'').trim(),date:r[ix('analysis date')]||''};});}
+   .then(r=>r.ok?r.text():Promise.reject()).then(t=>{const rows=parseCSV(t);if(rows.length&&!/task id/i.test(rows[0].join(',')))throw 0;anLog={};anLogRows=[];if(rows.length>1){const h=rows[0].map(x=>x.trim().toLowerCase());
+     const ix=n=>h.indexOf(n);rows.slice(1).forEach(r=>{const id=String(r[ix('task id')]||'').trim();if(id){const _e={analyst:r[ix('analyst')]||'',lr:r[ix('labeler rating')]||'',qr:r[ix('qc rating')]||'',issue:String(r[ix('issue')]||'').trim(),date:r[ix('analysis date')]||''};anLog[id]=_e;anLogRows.push(Object.assign({id},_e));}});}
      try{localStorage.setItem('an_log',JSON.stringify(anLog));}catch(_){}anFinishLoad(cb);}).catch(()=>{
-     const local=()=>{try{anLog=JSON.parse(localStorage.getItem('an_log')||'{}');}catch(_){anLog={};}anFinishLoad(cb);};
+     const local=()=>{try{anLog=JSON.parse(localStorage.getItem('an_log')||'{}');}catch(_){anLog={};}anLogRows=[];anFinishLoad(cb);};
      if(!ANALYSIS_API_URL)return local();
      /* the sheet can't be read directly (e.g. the Analysis Log tab is hidden) → ask the script for it */
      fetch(ANALYSIS_API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},cache:'no-store',body:JSON.stringify({action:'log',email:anMe(),token:getAuthToken()})})
-      .then(r=>r.json()).then(j=>{if(!j||!j.ok||!Array.isArray(j.rows))throw 0;anLog={};j.rows.forEach(r=>{const id=String(r[0]||'').trim();if(id)anLog[id]={analyst:r[1]||'',lr:r[2]||'',qr:r[3]||'',issue:String(r[4]||'').trim(),date:r[5]||''};});
+      .then(r=>r.json()).then(j=>{if(!j||!j.ok||!Array.isArray(j.rows))throw 0;anLog={};anLogRows=[];j.rows.forEach(r=>{const id=String(r[0]||'').trim();if(id){const _e={analyst:r[1]||'',lr:r[2]||'',qr:r[3]||'',issue:String(r[4]||'').trim(),date:r[5]||''};anLog[id]=_e;anLogRows.push(Object.assign({id},_e));}});
         try{localStorage.setItem('an_log',JSON.stringify(anLog));}catch(_){}anFinishLoad(cb);}).catch(local);
    });
 }
@@ -4987,12 +4987,13 @@ function renderAnalysis(mc){
       body+=`<div class="sec" style="margin:0 0 12px"><div class="sec-hd"><div class="sec-t">${type}</div><div class="sec-m">${names.reduce((s,n)=>s+RATES.reduce((x,k)=>x+(g[n][k]||0),0),0)} tasks</div></div><div class="tbl-w"><table class="an-t"><tr><th>${anGroup==='QC'?'QTC':anGroup}</th>${RATES.map(k=>`<th class="c">${k}</th>`).join('')}<th class="c">Total</th><th class="c">Score %</th><th class="c">Mix</th></tr>`+
         names.map(n=>{const c=g[n],T=RATES.reduce((s,k)=>s+(c[k]||0),0);RATES.forEach(k=>tot[k]=(tot[k]||0)+(c[k]||0));return `<tr><td>${esc(n)}</td>${RATES.map(k=>`<td class="c">${c[k]||0}</td>`).join('')}<td class="c"><b>${T}</b></td><td class="c">${anScore(c).toFixed(1)}%</td><td>${anMix(c)}</td></tr>`;}).join('')+
         (names.length?`<tr class="tot"><td>TOTAL</td>${RATES.map(k=>`<td class="c">${tot[k]||0}</td>`).join('')}<td class="c">${RATES.reduce((s,k)=>s+(tot[k]||0),0)}</td><td class="c">${anScore(tot).toFixed(1)}%</td><td>${anMix(tot)}</td></tr>`:'<tr><td colspan="8" style="text-align:center;color:var(--muted)">No rated tasks</td></tr>')+'</table></div></div>';});body+='</div><div id="anTrendBox">'+anChart(rated)+'</div>';}else if(anView==='analysts'){
-    /* count straight from the Analysis Log (same as the sheet) — a logged task that is not in the loaded dashboard data is still counted */
+    /* count every row of the Analysis Log (same as the sheet): a task analysed twice counts twice, and a logged task that is not in the loaded dashboard data is still counted */
     const tById={};all.forEach(t=>{tById[t.id]=t;});
     const _sv=[anF.from,anF.to];anF.from=anF.to='';const okIds=new Set(anFiltered(all).map(t=>t.id));anF.from=_sv[0];anF.to=_sv[1];
     const tf=!!(anF.lab.size||anF.qc.size||anF.type.size||anF.pass.size||anF.shift||anF.mine||anF.q||anF.status);
     let doneN=0,orphan=0;const per={};const days={};
-    Object.keys(anLog).forEach(id=>{const l=anLog[id],t=tById[id];
+    const _rows=anLogRows.slice(),_seen=new Set(anLogRows.map(r=>r.id));Object.keys(anLog).forEach(id=>{if(!_seen.has(id))_rows.push(Object.assign({id},anLog[id]));});   // + anything just saved that the sheet read hasn't returned yet
+    _rows.forEach(l=>{const id=l.id,t=tById[id];
       if(t?!okIds.has(id):tf)return;
       const d=String(l.date||(t&&t.day)||'').trim();
       if(anF.from&&d<anF.from)return;if(anF.to&&d>anF.to)return;
