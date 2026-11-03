@@ -3432,7 +3432,7 @@ function setTrafficLight(state){['tlRed','tlYellow','tlGreen'].forEach(id=>{cons
 function getMondayStr(d){if(!d||!d.match(/^\d{4}-\d{2}-\d{2}$/))return'';const dt=new Date(d+'T12:00:00');const day=dt.getDay();const diff=day===0?-6:1-day;const mon=new Date(dt);mon.setDate(dt.getDate()+diff);return mon.toISOString().substring(0,10);}
 function getWeekLabel(d){const m=getMondayStr(d);return m?'Week of Mon '+m:d;}
 function buildStrip(){const s=document.getElementById('fstrip');const dates=sOpts._dates||[];let h='';if(dates.length){window._weekList=[];const weekMap={};dates.forEach(d=>{const lbl=getWeekLabel(d);if(!weekMap[lbl]){weekMap[lbl]=[];window._weekList.push(lbl);}weekMap[lbl].push(d);});window._weekList.sort().reverse();window._weekMap=weekMap;const wCnt=selWeeks.size;h+=`<div class="fg" id="fg___week"><div class="fchip${wCnt?' has-sel':''}" id="fc___week" onclick="tgDrop('__week')">📅 Week${wCnt?` <span class="chk-cnt">${wCnt}</span>`:''} <span class="chk-arr">▾</span></div><div class="dpanel" id="dp___week">${window._weekList.length>5?`<input class="dp-srch" placeholder="Search week…" oninput="rdropWeek()" id="ds___week"/>`:''}<div class="dp-list" id="dl___week"></div><div class="dp-foot"><button onclick="clrWeeks();event.stopPropagation()">✕ Clear</button><button onclick="closeDr('__week');event.stopPropagation()">✓ Done</button></div></div></div>`;const dCnt=selD.size;h+=`<div class="fg" id="fg___date"><div class="fchip${dCnt?' has-sel':''}" id="fc___date" onclick="tgDrop('__date')">📆 Date${dCnt?` <span class="chk-cnt">${dCnt}</span>`:''} <span class="chk-arr">▾</span></div><div class="dpanel" id="dp___date"><input class="dp-srch" placeholder="Search date…" oninput="rdropDate()" id="ds___date"/><div class="dp-list" id="dl___date"></div><div class="dp-foot"><button onclick="clrDates();event.stopPropagation()">✕ Clear</button><button onclick="closeDr('__date');event.stopPropagation()">✓ Done</button></div></div></div>`;h+=timeChipHtml();if(SC.some(c=>(sOpts[c.key]||[]).length))h+=`<div class="fsep"></div>`;}
-h+=`<div class="id-filter-box"><input class="id-filter-input" id="idFilterInput" placeholder="🔎 ID… (several: space / comma)" title="Search several IDs at once: separate them with a space or comma, or paste a whole column" value="${esc(idFilter)}" oninput="setIdFilter(this.value)" onpaste="idPaste(event)"/>${idFilter?`<span class="id-filter-x" onclick="setIdFilter('');document.getElementById('idFilterInput').value=''">✕</span>`:''}<div class="fchip arc-search-btn" title="Search this ID in the Archive" onclick="openArchiveSearch()">📦 Archive</div></div><div class="fsep"></div>`;
+h+=`<div class="id-filter-box"><input class="id-filter-input" id="idFilterInput" placeholder="🔎 ID… (paste one or many)" title="Paste one or many IDs (a whole column, or task links) — it searches right away" value="${esc(idFilter)}" oninput="setIdFilter(this.value)" onpaste="idPaste(event)"/>${idFilter?`<span class="id-filter-x" onclick="setIdFilter('');document.getElementById('idFilterInput').value=''">✕</span>`:''}<div class="fchip arc-search-btn" title="Search this ID in the Archive" onclick="openArchiveSearch()">📦 Archive</div></div><div class="fsep"></div>`;
 SC.forEach(sc=>{const opts=sOpts[sc.key];if(!opts||!opts.length)return;const cnt=(sel[sc.key]||new Set()).size;h+=`<div class="fg" id="fg_${sid(sc.key)}"><div class="fchip${cnt?' has-sel':''}" id="fc_${sid(sc.key)}" onclick="tgDrop('${sc.key}')">${sc.ic} ${sc.lbl}${cnt?` <span class="chk-cnt">${cnt}</span>`:''} <span class="chk-arr">▾</span></div><div class="dpanel" id="dp_${sid(sc.key)}">${opts.length>7?`<input class="dp-srch" placeholder="Search ${sc.lbl}…" oninput="rdrop('${sc.key}')" id="ds_${sid(sc.key)}"/>`:''}<div class="dp-list" id="dl_${sid(sc.key)}"></div><div class="dp-foot"><button onclick="clrSl('${sc.key}');event.stopPropagation()">✕ Clear</button><button onclick="closeDr('${sc.key}');event.stopPropagation()">✓ Done</button></div></div></div>`;});s.innerHTML=h;injectPresets();rdropWeek();rdropDate();SC.forEach(sc=>rdrop(sc.key));}
 function rdropWeek(){const listEl=document.getElementById('dl___week');if(!listEl)return;const q=(document.getElementById('ds___week')||{}).value||'';const weeks=window._weekList||[];const vis=q?weeks.filter(w=>w.toLowerCase().includes(q.toLowerCase())):weeks;listEl.innerHTML=vis.map(w=>{const on=selWeeks.has(w);const cnt=((window._weekMap||{})[w]||[]).reduce((s,d)=>s+rawRows.filter(r=>isRowAllowed(r)&&rDate(r)===d).length,0);return`<div class="dp-item${on?' on':''}" onclick="tgWeek('${esc(w)}');event.stopPropagation()"><div class="dp-cb">${on?'✓':''}</div><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(w)}</span><span class="dp-cnt">${cnt}</span></div>`;}).join('')||'<div style="padding:8px;font-size:.62rem;color:var(--muted)">No results</div>';}
 function rdropDate(){const listEl=document.getElementById('dl___date');if(!listEl)return;const q=(document.getElementById('ds___date')||{}).value||'';const allDates=sOpts._dates||[];const visDates=selWeeks.size?allDates.filter(d=>selWeeks.has(getWeekLabel(d))):allDates;const vis=q?visDates.filter(d=>d.includes(q)):visDates;listEl.innerHTML=vis.map(d=>{const on=selD.has(d);const cnt=rawRows.filter(r=>isRowAllowed(r)&&rDate(r)===d).length;const star=d===todayStr?' ⭐':'';return`<div class="dp-item${on?' on':''}" onclick="tgDate('${d}');event.stopPropagation()"><div class="dp-cb">${on?'✓':''}</div><span style="flex:1;font-family:var(--mono);font-size:.65rem">${d}${star}</span><span class="dp-cnt">${cnt}</span></div>`;}).join('')||'<div style="padding:8px;font-size:.62rem;color:var(--muted)">No results</div>';}
@@ -3482,26 +3482,33 @@ function undoClearAll(){
 }
 
 /* ===== PATCH #1: debounce the ID search input ===== */
-/* multi-ID search: separate IDs with space / comma / semicolon / new line — rows matching ANY of them are shown */
-function idTokens(q){return String(q||'').toLowerCase().split(/[\s,;|]+/).filter(Boolean);}
+/* multi-ID search: just paste the IDs — no separators needed. Works with new lines (a pasted column), spaces, commas,
+   IDs stuck together (10 digits each) and even whole task links (…/id/1464033073/queue/…). Rows matching ANY of them are shown. */
+function idTokens(q){
+  q=String(q||'').toLowerCase();
+  const links=[...q.matchAll(/\/id\/(\d+)/g)].map(m=>m[1]);
+  if(links.length)return [...new Set(links)];
+  const out=[];
+  q.split(/[\s,;|]+/).filter(Boolean).forEach(t=>{
+    if(/^\d+$/.test(t)&&t.length>10&&t.length%10===0){for(let i=0;i<t.length;i+=10)out.push(t.slice(i,i+10));}
+    else out.push(t);
+  });
+  return [...new Set(out)];
+}
 function idPaste(e){
   try{
     const t=(e.clipboardData||window.clipboardData).getData('text');
-    if(!/[\r\n\t]/.test(t))return;
     e.preventDefault();const el=e.target;
     const clean=t.replace(/[\r\n\t]+/g,' ').replace(/\s{2,}/g,' ').trim();
-    el.setRangeText(clean+' ',el.selectionStart,el.selectionEnd,'end');
-    setIdFilter(el.value);
+    el.setRangeText(clean,el.selectionStart,el.selectionEnd,'end');
+    setIdFilter(el.value,true);                          // search right away, no waiting
   }catch(err){}
 }
 let _idFilterDebounce=null;
-function setIdFilter(v){
+function setIdFilter(v,now){
   clearTimeout(_idFilterDebounce);
-  _idFilterDebounce=setTimeout(()=>{
-    idFilter=v.trim();
-    saveFilters();
-    applyAll();
-  },300);
+  const run=()=>{idFilter=v.trim();saveFilters();applyAll();};
+  if(now)run();else _idFilterDebounce=setTimeout(run,300);
 }
 function applyAll(){const idIdx=hdrs.findIndex(h=>h.toLowerCase()==='id');const idQ=idTokens(idFilter);fcache=rawRows.filter(r=>{if(!isRowAllowed(r))return false;if(selWeeks.size){const wl=getWeekLabel(rDate(r));if(!selWeeks.has(wl))return false;}if(selD.size&&!selD.has(rDate(r)))return false;if(!timeOk(r))return false;if(idQ.length&&idIdx>=0){const iv=String(r[idIdx]||'').toLowerCase();if(!idQ.some(q=>iv.includes(q)))return false;}for(const[k,ss]of Object.entries(sel)){if(!ss.size)continue;const ci=sIdx[k];if(ci===undefined)continue;if(!ss.has(String(r[ci]||'').trim()))return false;}return true;});saveFilters();updPills();updPresets();buildTabs();renderAllSections();}
 function updPills(){const w=document.getElementById('pillsRow');const ps=[];let any=false;if(idFilter){any=true;ps.push(`<span class="pill">🔎 ID${idTokens(idFilter).length>1?' ×'+idTokens(idFilter).length:''}: ${esc(idFilter.length>40?idFilter.slice(0,40)+'…':idFilter)} <span class="pill-x" onclick="setIdFilter('');const i=document.getElementById('idFilterInput');if(i)i.value='';">✕</span></span>`);}selWeeks.forEach(wk=>{any=true;ps.push(`<span class="pill">📅 ${esc(wk)} <span class="pill-x" onclick="tgWeek('${esc(wk)}')">✕</span></span>`);});selD.forEach(d=>{any=true;ps.push(`<span class="pill">${d===todayStr?'🗓️ '+d+' ⭐':'🗓️ '+d} <span class="pill-x" onclick="tgDate('${d}')">✕</span></span>`);});if(timeActive()){any=true;ps.push(`<span class="pill">🕒 ${timePreset?timePreset+' shift':(timeFrom||'…')+' → '+(timeTo||'…')} <span class="pill-x" onclick="clrTime()">✕</span></span>`);}for(const[k,ss]of Object.entries(sel)){ss.forEach(v=>{any=true;const sc=SC.find(s=>s.key===k);ps.push(`<span class="pill">${sc?sc.ic:''} ${esc(v)} <span class="pill-x" onclick="tgVal('${esc(k)}','${esc(v)}')">✕</span></span>`);});}w.innerHTML=any?ps.join('')+`<button class="clr-btn" onclick="clearAll()">✕ Clear All</button>`:'<span class="pill pill-all">All Data — No Filters Active</span>';}
@@ -3990,8 +3997,8 @@ function rdSelAll(cb){(window._rdRows||[]).forEach((r,ri)=>selToggle('rd',rdRowI
 function rdCopyText(r){
   const hl=hdrs.map(h=>String(h||'').trim().toLowerCase());
   const g=(...names)=>{const i=hl.findIndex(h=>names.includes(h));return i>=0?String(r[i]??'').trim():'';};
-  const rawAt=g('created at');let ts=rawAt;
-  if(rawAt){const d=new Date(rawAt);if(!isNaN(d)){const p2=n=>String(n).padStart(2,'0');ts=d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate())+' '+d.toTimeString().slice(0,8);}}
+  const rawAt=g('timestamp','created at');let ts=rawAt;
+  if(rawAt){const d=parseTs(rawAt);if(d)ts=fmt12(d);}
   const id=g('id','task id'),link=g('task link','link'),lab=g('labeler name'),qc=g('qtc name').replace(/\s*\([^)]*\)\s*$/,'').trim();
   let lr='',qr='',issue='';
   try{if(id&&typeof anAllowed==='function'&&anAllowed()&&typeof anCur==='function'&&typeof anLog!=='undefined'&&(anLog[id]||(typeof anDraft!=='undefined'&&anDraft[id]))){const v=anCur(id);lr=v.lr||'';qr=v.qr||'';issue=String(v.issue||'').trim();}}catch(e){}
@@ -4733,13 +4740,28 @@ function anMix(c){const T=RATES.reduce((s,k)=>s+(c[k]||0),0);if(!T)return '';
   return '<div class="an-mix" title="'+RATES.map(k=>k+' '+Math.round((c[k]||0)/T*100)+'%').join(' · ')+'">'+RATES.filter(k=>c[k]).map(k=>'<i style="width:'+(c[k]/T*100).toFixed(1)+'%;background:'+RATE_COL[k]+'"></i>').join('')+'</div>';}
 function anLegend(){return '<div class="an-leg">'+RATES.map(k=>'<span><i style="background:'+RATE_COL[k]+'"></i>'+k+'</span>').join('')+'</div><div class="an-leg" style="margin-top:-4px"><span>↕ Ranked by weighted score — few tasks pull a name toward the average, so 1 Excellent task does not beat 40 good ones. Score % is the plain score.</span></div>';}
 let anView='tasks',anGroup='QC',anLog={},anLogRows=[],anLogLoaded=false,anF={from:'',to:'',lab:new Set(),qc:new Set(),q:'',type:new Set(),pass:new Set(),status:'',shift:'',mine:false,chart:''};
+/* ===== ONE date/time parser for every tab (Analysis, copy-text, …): same rules as extractDate()/rMinutes() ===== */
+function parseTs(v){
+  if(v==null)return null;const s=String(v).trim();if(!s)return null;
+  let m=s.match(/^Date\((\d{4}),(\d{1,2}),(\d{1,2})(?:,(\d{1,2}),(\d{1,2})(?:,(\d{1,2}))?)?/);
+  if(m)return new Date(+m[1],+m[2],+m[3],+(m[4]||0),+(m[5]||0),+(m[6]||0));
+  const day=extractDate(s);if(!day)return null;
+  const dp=day.split('-');let h=0,mi=0,se=0;
+  const t=s.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?\s*([AaPp][Mm])?/);
+  if(t){h=+t[1];mi=+t[2];se=+(t[3]||0);if(t[4]){const pm=t[4][0].toLowerCase()==='p';if(h===12)h=0;if(pm)h+=12;}}
+  else if(/^\d{4,6}\.\d+$/.test(s)){const fr=(parseFloat(s)%1)*86400;h=Math.floor(fr/3600);mi=Math.floor(fr%3600/60);se=Math.round(fr%60);}
+  const d=new Date(+dp[0],+dp[1]-1,+dp[2],h,mi,se);return isNaN(d)?null:d;
+}
+/* the column that holds the task time everywhere in the dashboard: "Timestamp" first, "Created At" only if there is no Timestamp */
+function tsColIdx(hd){const l=hd.map(x=>String(x||'').trim().toLowerCase());let i=l.indexOf('timestamp');if(i<0)i=l.indexOf('created at');if(i<0)i=l.indexOf('date');return i;}
+function fmt12(d){let h=d.getHours();const ap=h>=12?'PM':'AM';h=h%12||12;const p=n=>String(n).padStart(2,'0');return p(d.getMonth()+1)+'/'+p(d.getDate())+'/'+d.getFullYear()+', '+h+':'+p(d.getMinutes())+':'+p(d.getSeconds())+' '+ap;}
 function anCol(n){return hdrs.findIndex(h=>h.toLowerCase()===n.toLowerCase());}
 function anYmd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function anTasks(){
-  const c={id:anCol('Id'),lab:anCol('Labeler Name'),qc:anCol('Qtc Name'),st:anCol('Stage'),pass:anCol('Pass'),at:anCol('Created At'),lnk:anCol('Task Link'),sh:anCol('Shift'),obj:anCol('Object Count')};
-  return rawRows.map(r=>{const d=new Date(r[c.at]);const ok=!isNaN(d);const stage=String(r[c.st]||'');
+  const c={id:anCol('Id'),lab:anCol('Labeler Name'),qc:anCol('Qtc Name'),st:anCol('Stage'),pass:anCol('Pass'),at:tsColIdx(hdrs),lnk:anCol('Task Link'),sh:anCol('Shift'),obj:anCol('Object Count')};
+  return rawRows.map(r=>{const d=parseTs(r[c.at]);const ok=!!d;const stage=String(r[c.st]||'');
     return{id:String(r[c.id]||'').trim(),lab:String(r[c.lab]||'').trim(),qc:String(r[c.qc]||'').replace(/\s*\([^)]*\)\s*$/,'').trim(),
-      type:/lidar/i.test(stage)?'Lidar':'Lane Line',pass:String(r[c.pass]||'').trim(),shiftRaw:(c.sh>=0?String(r[c.sh]||'').trim():''),obj:(c.obj>=0?(v=>isNaN(v)?null:v)(parseFloat(String(r[c.obj]??'').replace(/,/g,''))):null),link:String(r[c.lnk]||''),shift:(v=>/over/.test(v)?'ON':/night/.test(v)?'N':/morn|day/.test(v)?'M':'')(String(r[c.sh]||'').toLowerCase()),time:ok?d.getTime():0,day:ok?anYmd(d):'',ts:ok?anYmd(d)+' '+d.toTimeString().slice(0,8):''};
+      type:/lidar/i.test(stage)?'Lidar':'Lane Line',pass:String(r[c.pass]||'').trim(),shiftRaw:(c.sh>=0?String(r[c.sh]||'').trim():''),obj:(c.obj>=0?(v=>isNaN(v)?null:v)(parseFloat(String(r[c.obj]??'').replace(/,/g,''))):null),link:String(r[c.lnk]||''),shift:(v=>/over/.test(v)?'ON':/night/.test(v)?'N':/morn|day/.test(v)?'M':'')(String(r[c.sh]||'').toLowerCase()),time:ok?d.getTime():0,day:ok?anYmd(d):'',ts:ok?fmt12(d):''};
   }).filter(t=>t.id);
 }
 const AN_RANK_M=5;   // weight of the overall average when ranking: a name with few tasks is pulled toward it
@@ -5041,7 +5063,7 @@ function renderAnalysis(mc){
     const _rows=anLogRows.slice(),_seen=new Set(anLogRows.map(r=>r.id));Object.keys(anLog).forEach(id=>{if(!_seen.has(id))_rows.push(Object.assign({id},anLog[id]));});   // + anything just saved that the sheet read hasn't returned yet
     _rows.forEach(l=>{const id=l.id,t=tById[id];
       if(t?!okIds.has(id):tf)return;
-      const d=String(l.date||(t&&t.day)||'').trim();
+      const d=String(extractDate(l.date)||(t&&t.day)||'').trim();
       if(anF.from&&d<anF.from)return;if(anF.to&&d>anF.to)return;
       const a=l.analyst||'—';per[a]=per[a]||{Lidar:0,'Lane Line':0,issues:0,total:0};
       if(t)per[a][t.type]++;else orphan++;
