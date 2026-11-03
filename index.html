@@ -3227,6 +3227,23 @@ function csvEsc(v){v=v==null?'':String(v);return /[",\n\r]/.test(v)?'"'+v.replac
 function tableToCSV(t){return t.map(r=>r.map(csvEsc).join(',')).join('\n');}
 function _hk(h){const k=String(h==null?'':h).toLowerCase().replace(/[\s_\-.]+/g,'');return (k==='taskid'||k==='actualid')?'id':k;}   // "Task ID" (Backup) and "ID" (Data Base) are the same column
 const BACKUP_TAB_NAME='Backup Date Base';
+/* ===== NEW Data Base sheet (third source, merged into the main Data Base the same way as the backup) =====
+   NEW_SHEET_ID '' = turn it OFF. Must be shared as "Anyone with the link can view". */
+const NEW_SHEET_ID='1UUz2m5wR-L3QEEPxGVj-YXjM3ctQK_XWaqkGg7CdMtc';
+const NEW_SHEET_GID='0';
+const NEW_TAB_NAME='Data Base';
+function fetchNewTable(){
+  const urls=[
+    `https://docs.google.com/spreadsheets/d/${NEW_SHEET_ID}/export?format=csv&gid=${encodeURIComponent(NEW_SHEET_GID)}`,
+    `https://docs.google.com/spreadsheets/d/${NEW_SHEET_ID}/gviz/tq?tqx=out:csv&headers=1&sheet=${encodeURIComponent(NEW_TAB_NAME)}`
+  ];
+  const tryAt=i=>fetch(urls[i],{cache:'no-store'})
+    .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.text();})
+    .then(t=>{if(/^\s*<(!doctype|html)/i.test(t))throw new Error('not readable — share the NEW sheet as "Anyone with the link can view"');return parseCSVAsync(t);})
+    .then(tb=>{if(!tb||tb.length<2)throw new Error('empty');return tb;})
+    .catch(e=>{if(i+1<urls.length)return tryAt(i+1);throw e;});
+  return tryAt(0);
+}
 function fetchBackupTable(){
   /* try the tab by its NAME first (can't be wrong like a GID can), then fall back to the GID */
   const urls=[
@@ -3270,11 +3287,12 @@ function mergeBackup(mainTable,bTable){
 let _cacheTried=false;
 /* ---- start the heavy downloads the moment the page opens (in parallel with the login check) ---- */
 function _fetchMainText(){return fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${SHEET_GID}`).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.text();});}
+function _fetchNew(){return NEW_SHEET_ID?fetchNewTable().catch(e=>{console.warn('NEW sheet not readable:',e.message);window._newErr=e.message;return null;}):Promise.resolve(null);}
 function _fetchBackup(){return BACKUP_SHEET_ID?fetchBackupTable().catch(e=>{console.warn('Backup sheet not readable:',e.message);window._backupErr=e.message;return null;}):Promise.resolve(null);}
 function _startPrefetch(){
   try{
     const p=_fetchMainText();p.catch(()=>{});
-    window._mainPre={t:Date.now(),p:p,b:_fetchBackup()};
+    window._mainPre={t:Date.now(),p:p,b:_fetchBackup(),n:_fetchNew()};
     /* saved copy from last time: read + parse it now (parsing runs in a worker) so it is ready the instant the login check finishes */
     window._cachePre=idbGet('csv').then(c=>{if(!(c&&c.v===AUTH_VER&&c.text))return null;return parseCSVAsync(c.text).then(table=>({text:c.text,table,ts:c.ts})).catch(()=>({text:c.text,ts:c.ts}));}).catch(()=>null);
   }catch(e){}
@@ -3294,13 +3312,19 @@ function loadData(){
   const _pre=(window._mainPre&&Date.now()-window._mainPre.t<90000)?window._mainPre:null;window._mainPre=null;
   const mainP=_pre?_pre.p:_fetchMainText();
   const backP=_pre?_pre.b:_fetchBackup();
-  Promise.all([mainP,backP]).then(async([txt,bt])=>{
+  const newP=_pre?_pre.n:_fetchNew();
+  Promise.all([mainP,backP,newP]).then(async([txt,bt,nt])=>{
+    const hasN=nt&&nt.length>1;
     const hasB=bt&&bt.length>1;
     /* cheap fingerprint of main sheet + backup sheet → if identical to last time, skip parse / merge / cache write completely (saves ~200 MB of churn on a phone) */
     const bsig=hasB?(bt.length+':'+String(bt[bt.length-1]||'').slice(0,120)):'';
-    const hh=(await fastHash(txt))+'|'+bsig;
+    const nsig=hasN?(nt.length+':'+String(nt[nt.length-1]||'').slice(0,120)):'';
+    const hh=(await fastHash(txt))+'|'+bsig+'|'+nsig;
     if(hh===_lastCsvHash&&rawRows.length>0){_csvUnchanged();return;}
     const table=await parseCSVAsync(txt);let added=0;
+    if(hasN){let na=0;try{na=mergeBackup(table,nt);}catch(e){console.warn('NEW sheet merge failed:',e.message);na=0;}
+      if(window._lastNewAdded!==na){const f=window._lastNewAdded===undefined;window._lastNewAdded=na;if(!f||na>0)showToast(na>0?('🆕 NEW Data Base merged: +'+na+' rows'):'🆕 NEW Data Base: no new rows');}}
+    else if(window._newErr&&!window._newErrWarned){window._newErrWarned=true;showToast('⚠️ NEW sheet not readable: '+window._newErr);}
     if(hasB){try{added=mergeBackup(table,bt);}catch(e){console.warn('Backup merge failed:',e.message);added=0;}}
     if(window._backupMissing&&window._backupMissing.length&&!window._backupMissWarned){window._backupMissWarned=true;showToast('⚠️ Backup tab has no column: '+window._backupMissing.join(', '));}
     if(window._lastBackupAdded!==added){const first=window._lastBackupAdded===undefined;window._lastBackupAdded=added;if(!first||added>0)showToast(added>0?('🗂️ Backup sheet merged: +'+added+' rows'):'🗂️ Backup sheet: no new rows');}
