@@ -1754,7 +1754,7 @@ async function attemptLogin(){
       }
       errEl.textContent='Sending request…';lgSteps(0,0,'Sending request…');
       let r;
-      try{r=await authCall(isSignup?{action:'signup',name:nm,email:raw,password:pass}:{action:'forgot',email:raw});}catch(e){return fail('Could not reach the server — check your connection and try again');}
+      try{r=await authCall(isSignup?{action:'signup',name:nm,email:raw,password:pass}:{action:'forgot',email:raw});}catch(e){return fail('Could not reach the server — check your connection and try again ('+String(e&&e.message||e).slice(0,70)+')');}
       let doneMsg='';
       if(r&&r.ok&&!r.pending)doneMsg=isSignup?'Request sent ✓ — you can sign in with this email and password once the administrator approves you.':'Reset request sent ✓ — once the administrator approves it, sign in with your email and create a new password.';
       else if((r&&r.ok&&r.pending)||(r&&r.error==='pending'))doneMsg='You already have a request waiting for approval ⏳';
@@ -1775,7 +1775,7 @@ async function attemptLogin(){
     if(_loginStep==='email'){
       errEl.textContent='Checking…';lgSteps(0,0,'Verifying email…');
       let r;
-      try{r=await authCall({action:'status',email:raw});}catch(e){return fail('Could not reach the server — check your connection and try again');}
+      try{r=await authCall({action:'status',email:raw});}catch(e){return fail('Could not reach the server — check your connection and try again ('+String(e&&e.message||e).slice(0,70)+')');}
       if(!r||!r.ok)return fail('Something went wrong — try again'+(r&&r.error?' ('+r.error+(r.detail?': '+r.detail:'')+')':''));
       if(!r.allowed){
         if(r.state==='pending')return fail('Your request is still waiting for approval ⏳',eIn);
@@ -1794,7 +1794,7 @@ async function attemptLogin(){
     }
     errEl.textContent=_loginStep==='setup'?'Creating password…':'Signing in…';lgSteps(1,1,'Security check…');
     let r;
-    try{r=await authCall({action:_loginStep,email:raw,password:pass});}catch(e){return fail('Could not reach the server — check your connection and try again');}
+    try{r=await authCall({action:_loginStep,email:raw,password:pass});}catch(e){return fail('Could not reach the server — check your connection and try again ('+String(e&&e.message||e).slice(0,70)+')');}
     if(!r||!r.ok){
       const er=r&&r.error;
       if(er==='bad_password')return fail('Wrong password',pIn);
