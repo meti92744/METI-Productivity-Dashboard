@@ -4729,7 +4729,7 @@ const RATE_COL={Excellent:'#16a34a',Good:'#2563eb',Average:'#f59e0b',Poor:'#dc26
 function anMix(c){const T=RATES.reduce((s,k)=>s+(c[k]||0),0);if(!T)return '';
   return '<div class="an-mix" title="'+RATES.map(k=>k+' '+Math.round((c[k]||0)/T*100)+'%').join(' · ')+'">'+RATES.filter(k=>c[k]).map(k=>'<i style="width:'+(c[k]/T*100).toFixed(1)+'%;background:'+RATE_COL[k]+'"></i>').join('')+'</div>';}
 function anLegend(){return '<div class="an-leg">'+RATES.map(k=>'<span><i style="background:'+RATE_COL[k]+'"></i>'+k+'</span>').join('')+'</div><div class="an-leg" style="margin-top:-4px"><span>↕ Ranked by weighted score — few tasks pull a name toward the average, so 1 Excellent task does not beat 40 good ones. Score % is the plain score.</span></div>';}
-let anView='tasks',anGroup='QC',anLog={},anLogRows=[],anLogLoaded=false,anF={from:'',to:'',lab:new Set(),qc:new Set(),q:'',type:new Set(),pass:new Set(),status:'',shift:'',mine:false,chart:''};
+let anView='tasks',anGroup='QC',anLog={},anLogRows=[],anLogLoaded=false,anF={from:'',to:'',lab:new Set(),qc:new Set(),q:'',type:new Set(),pass:new Set(),status:'',shift:'',mine:false,chart:'',analyst:new Set()};
 /* ===== ONE date/time parser for every tab (Analysis, copy-text, …): same rules as extractDate()/rMinutes() ===== */
 function parseTs(v){
   if(v==null)return null;const s=String(v).trim();if(!s)return null;
@@ -5082,8 +5082,12 @@ function renderAnalysis(mc){
       `</table></div>${orphan?`<div class="an-note">${orphan} analyzed task${orphan>1?'s are':' is'} not in the loaded dashboard data (counted in Total, type unknown)</div>`:''}</div><div class="sec"><div class="sec-hd"><div class="sec-t">📅 Per day</div></div><div class="tbl-w"><table class="an-t"><tr><th>Date</th>${an.map(a=>`<th class="c">${esc(a)}</th>`).join('')}<th class="c">Total</th></tr>`+
       Object.keys(days).sort().reverse().map(d=>`<tr><td>${d}</td>${an.map(a=>`<td class="c">${days[d][a]||0}</td>`).join('')}<td class="c"><b>${Object.values(days[d]).reduce((s,x)=>s+x,0)}</b></td></tr>`).join('')+'</table></div></div>';
   }else{
-    const iss=tasks.filter(t=>anLog[t.id]&&anLog[t.id].issue);meta=iss.length+' issues';
-    body=anDateBar()+`<div class="tbl-w" style="max-height:620px"><table class="an-t"><tr><th>Task</th><th>Time</th><th>Labeler</th><th>QTC</th><th>Type</th><th>Analyst</th><th>Issue / Problem</th></tr>`+iss.map(t=>`<tr><td><a href="${esc(t.link)}" target="_blank" rel="noopener">${t.id} ↗</a></td><td>${t.ts}</td><td>${esc(t.lab)}</td><td>${esc(t.qc)}</td><td>${t.type}</td><td>${esc(anLog[t.id].analyst||'')}</td><td style="white-space:normal">${esc(anLog[t.id].issue)}</td></tr>`).join('')+'</table></div>';
+    const _sq=anF.qc;anF.qc=new Set();const issBase=anFiltered(all).filter(t=>anLog[t.id]&&anLog[t.id].issue);anF.qc=_sq;   // options ignore the QTC/Analyst picks so they never disappear
+    const iss=tasks.filter(t=>anLog[t.id]&&anLog[t.id].issue&&(!anF.analyst.size||anF.analyst.has(anLog[t.id].analyst||'—')));
+    const _anOpts=anCount(issBase.filter(t=>!anF.qc.size||anF.qc.has(t.qc)),t=>anLog[t.id].analyst||'—');
+    const _qcOpts=anCount(issBase.filter(t=>!anF.analyst.size||anF.analyst.has(anLog[t.id].analyst||'—')),t=>t.qc);
+    meta=iss.length+' issues';
+    body=`<div class="an-bar">${anRange()}${anDD('analyst','🧑‍💻 Analyst',_anOpts)}${anDD('qc','🏷 QTC',_qcOpts)}${(anF.analyst.size||anF.qc.size)?'<button class="preset" onclick="anF.analyst.clear();anF.qc.clear();anDone()">✕ Clear filters</button>':''}</div>`+`<div class="tbl-w" style="max-height:620px"><table class="an-t"><tr><th>Task</th><th>Time</th><th>Labeler</th><th>QTC</th><th>Type</th><th>Analyst</th><th>Issue / Problem</th></tr>`+iss.map(t=>`<tr><td><a href="${esc(t.link)}" target="_blank" rel="noopener">${t.id} ↗</a></td><td>${t.ts}</td><td>${esc(t.lab)}</td><td>${esc(t.qc)}</td><td>${t.type}</td><td>${esc(anLog[t.id].analyst||'')}</td><td style="white-space:normal">${esc(anLog[t.id].issue)}</td></tr>`).join('')+'</table></div>';
   }
   mc.innerHTML=`<div class="an-wrap"><div id="anSyncBar" class="an-sync" style="display:none"></div><div class="sec" style="overflow:visible!important"><div class="sec-hd"><div class="sec-t">🔎 Analysis</div><div class="sec-m">${meta}</div></div>${anTabs()}${note}${body}</div></div>`;
   const _n=mc.querySelector('.tbl-w');if(_n)_n.scrollTop=_st;window.scrollTo(0,_wy);anUpdSaveAll();anUpdBanner();
