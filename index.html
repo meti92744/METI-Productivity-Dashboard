@@ -1641,6 +1641,47 @@ const REQ_ADMINS=['mahmoudseif589@gmail.com'];
 const REQ_POLL_MS=45000;
 let _reqTimer=null,_reqList=[],_reqKnown=new Set(),_reqFirst=true,_reqBusy=false,_reqBase=document.title;
 function reqEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+/* ===== Notification sounds — synthesised with Web Audio (no audio files, works offline). Short tones in the same spirit as Slack's set; pick one in the 🔔 Requests panel. ===== */
+const SND_KEY='meti_notif_sound';
+const SND_LIST=[['ding','Ding'],['plink','Plink'],['knock','Knock'],['boing','Boing'],['pop','Pop'],['chime','Chime'],['harp','Harp'],['tada','Ta-da'],['whoop','Whoop'],['off','Off']];
+let _sndCtx=null;
+function sndGet(){try{const v=localStorage.getItem(SND_KEY);return SND_LIST.some(x=>x[0]===v)?v:'ding';}catch(e){return 'ding';}}
+function sndCtx(){try{if(!_sndCtx){const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;_sndCtx=new AC();}if(_sndCtx.state==='suspended')_sndCtx.resume().catch(()=>{});return _sndCtx;}catch(e){return null;}}
+['pointerdown','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,()=>{sndCtx();},{once:true,passive:true,capture:true}));   // browsers only allow sound after the first click/tap
+function _tn(c,out,t,f,d,o){
+  o=o||{};const os=c.createOscillator(),g=c.createGain();
+  os.type=o.type||'sine';os.frequency.setValueAtTime(f,t);
+  if(o.to)os.frequency.exponentialRampToValueAtTime(o.to,t+d*(o.k||1));
+  if(o.vib){const l=c.createOscillator(),lg=c.createGain();l.frequency.value=o.vib[0];lg.gain.value=o.vib[1];l.connect(lg);lg.connect(os.frequency);l.start(t);l.stop(t+d+.05);}
+  g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(o.v==null?.5:o.v,t+(o.a||.008));g.gain.exponentialRampToValueAtTime(0.0001,t+d);
+  os.connect(g);g.connect(out);os.start(t);os.stop(t+d+.05);
+}
+function _sndRun(c,id){
+  const m=c.createGain();m.gain.value=.55;m.connect(c.destination);const t=c.currentTime+.03,T=(dt,f,d,o)=>_tn(c,m,t+dt,f,d,o);
+  switch(id){
+    case 'ding':T(0,1046.5,1.1,{v:.45});T(0,2093,.7,{v:.15});T(0,2890,.35,{v:.07});break;                         // single bell
+    case 'plink':T(0,1568,.28,{v:.5,type:'triangle'});T(0,3136,.12,{v:.1});break;                                   // short high pluck
+    case 'knock':T(0,220,.14,{to:70,v:.8});T(.13,200,.16,{to:65,v:.7});break;                                      // two soft knocks
+    case 'boing':T(0,320,.55,{to:760,k:.45,v:.5,vib:[18,28]});break;                                                // spring
+    case 'pop':T(0,380,.09,{to:1100,v:.6});T(.02,760,.06,{to:1500,v:.15});break;                                    // bubble
+    case 'chime':[523.25,659.25,783.99].forEach((f,i)=>T(i*.11,f,.55,{v:.35,type:'triangle'}));break;               // rising 3 notes
+    case 'harp':[783.99,659.25,523.25,392].forEach((f,i)=>{T(i*.09,f,.8,{v:.32});T(i*.09,f*2,.4,{v:.07});});break;  // falling 4 notes
+    case 'tada':[523.25,659.25,783.99].forEach((f,i)=>T(i*.1,f,.2,{v:.3,type:'triangle'}));T(.3,1046.5,.9,{v:.4,type:'triangle'});T(.3,2093,.5,{v:.1});break;
+    case 'whoop':T(0,350,.38,{to:1150,k:.7,v:.45});T(.28,1150,.2,{to:700,v:.25});break;                            // rising glide
+  }
+}
+function sndPlay(id){
+  id=id||sndGet();if(id==='off')return false;const c=sndCtx();if(!c)return false;
+  if(c.state==='running'){_sndRun(c,id);return true;}
+  c.resume().then(()=>_sndRun(c,id)).catch(()=>{});return false;
+}
+function sndSilentOS(){return sndGet()==='off'||!!(_sndCtx&&_sndCtx.state==='running');}   // our own sound is (or should be) in charge → mute the OS ping so it never doubles
+function reqSndHtml(){const cur=sndGet();return '<div class="rq-s"><span>🔊 Sound</span>'+SND_LIST.map(x=>'<button type="button" data-s="'+x[0]+'" class="'+(x[0]===cur?'on':'')+'" onclick="reqSndPick(\''+x[0]+'\',event)">'+x[1]+'</button>').join('')+'</div>';}
+function reqSndPick(id,ev){
+  if(ev)ev.stopPropagation();try{localStorage.setItem(SND_KEY,id);}catch(e){}
+  document.querySelectorAll('#reqPanel .rq-s button').forEach(b=>b.classList.toggle('on',b.dataset.s===id));   // no re-render, so the panel stays open
+  sndPlay(id);
+}
 function reqIsAdmin(){return REQ_ADMINS.indexOf(String(getLoggedInEmail()||'').trim().toLowerCase())>=0;}
 function reqStart(){
   if(_reqTimer||!reqIsAdmin())return;
@@ -1652,7 +1693,9 @@ function reqStart(){
     '#reqPanel .rq small{display:block;color:var(--muted);margin-top:2px}#reqPanel .rq-b{display:flex;gap:8px;margin-top:8px}'+
     '#reqPanel .rq-b button{flex:1;padding:6px 10px;border-radius:8px;border:1px solid var(--border-light);cursor:pointer;font-weight:700;background:transparent;color:var(--text)}'+
     '#reqPanel .rq-ok{background:rgba(13,148,136,.15)!important;border-color:rgba(13,148,136,.5)!important}#reqPanel .rq-no{background:rgba(196,41,63,.12)!important;border-color:rgba(196,41,63,.4)!important}'+
-    '#reqPanel .rq-e{padding:18px 14px;color:var(--muted);font-size:.8rem;text-align:center}';
+    '#reqPanel .rq-e{padding:18px 14px;color:var(--muted);font-size:.8rem;text-align:center}'+
+    '#reqPanel .rq-s{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border-light);font-size:.74rem}#reqPanel .rq-s span{font-weight:700;margin-right:2px}'+
+    '#reqPanel .rq-s button{padding:4px 10px;border-radius:999px;border:1px solid var(--border-light);background:transparent;color:var(--text);cursor:pointer;font-size:.72rem;font-weight:600}#reqPanel .rq-s button.on{background:rgba(10,132,255,.18);border-color:rgba(10,132,255,.6)}';
     document.head.appendChild(st);}
   if(!document.getElementById('reqPanel')){const d=document.createElement('div');d.id='reqPanel';document.body.appendChild(d);}
   document.addEventListener('click',e=>{const pn=document.getElementById('reqPanel');if(pn&&pn.classList.contains('open')&&!e.target.closest('#reqPanel,#reqBell'))pn.classList.remove('open');});
@@ -1679,9 +1722,10 @@ function reqPoll(){
 function reqAlert(fresh){
   const first=fresh[0],lab=x=>(x.type==='Reset'?'Password reset: ':'Access request: ')+(x.name||x.email);
   const msg=fresh.length>1?fresh.length+' new requests':lab(first);
+  try{sndPlay();}catch(e){}
   try{showToast('🔔 '+(_reqFirst?_reqList.length+' request(s) waiting for approval':msg));}catch(e){}
   try{if('Notification' in window&&Notification.permission==='granted'){
-    const n=new Notification('METI Dashboard',{body:_reqFirst?_reqList.length+' request(s) waiting for approval':msg,tag:'meti-req'});
+    const n=new Notification('METI Dashboard',{body:_reqFirst?_reqList.length+' request(s) waiting for approval':msg,tag:'meti-req',silent:sndSilentOS()});
     n.onclick=()=>{window.focus();const pn=document.getElementById('reqPanel');if(pn){pn.classList.add('open');reqRender();}n.close();};
   }}catch(e){}
 }
@@ -1690,7 +1734,7 @@ function reqRender(){
   if(c){c.textContent=n;c.style.display=n?'':'none';}
   document.title=(n?'('+n+') ':'')+_reqBase;
   const pn=document.getElementById('reqPanel');if(!pn||!pn.classList.contains('open'))return;
-  pn.innerHTML='<div class="rq-h">🔔 Pending requests ('+n+')</div>'+(n?_reqList.map((x,i)=>'<div class="rq"><b>'+(x.type==='Reset'?'🔑 Password reset':'🆕 Access request')+'</b> — '+reqEsc(x.name||'')+'<small>'+reqEsc(x.email)+'</small><small>'+reqEsc(x.at||'')+'</small><div class="rq-b"><button class="rq-ok" onclick="reqDecide('+i+',\'Approved\')">✓ Approve</button><button class="rq-no" onclick="reqDecide('+i+',\'Rejected\')">✕ Reject</button></div></div>').join(''):'<div class="rq-e">No pending requests 🎉</div>');
+  pn.innerHTML='<div class="rq-h">🔔 Pending requests ('+n+')</div>'+reqSndHtml()+(n?_reqList.map((x,i)=>'<div class="rq"><b>'+(x.type==='Reset'?'🔑 Password reset':'🆕 Access request')+'</b> — '+reqEsc(x.name||'')+'<small>'+reqEsc(x.email)+'</small><small>'+reqEsc(x.at||'')+'</small><div class="rq-b"><button class="rq-ok" onclick="reqDecide('+i+',\'Approved\')">✓ Approve</button><button class="rq-no" onclick="reqDecide('+i+',\'Rejected\')">✕ Reject</button></div></div>').join(''):'<div class="rq-e">No pending requests 🎉</div>');
 }
 function reqDecide(i,status){
   const x=_reqList[i];if(!x||_reqBusy)return;
