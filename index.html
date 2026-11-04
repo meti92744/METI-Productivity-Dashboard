@@ -30,7 +30,7 @@
 window.MEEG_CONFIG={
   SHEET_ID:'1g9mPKQMactJKC-BP0Ik3Cw72PLUXCb4VTKFbHYLjc5I',
   ARCHIVE_SHEET_ID:'1BSeiRLiRTSmH_Et0B8TQAPKsuY98CVSB-gcg6ai51YQ',
-  AUTH_API_URL:'https://script.google.com/macros/s/AKfycbwLANfa9EdRyaik3BPRiztJ0s-stCbiloXBfXrSGnZiTNb_PaJuXozM4_sM32MMACCl9A/exec',
+  AUTH_API_URL:'https://script.google.com/macros/s/AKfycbxJGBTz3j97tMb9NFT-IhErUubUeuyiGQWifIfLHDtt7d5sWpyHk1irGJuujpxL5dONww/exec',
   REFRESH_INTERVAL:60,      /* seconds between auto data refreshes */
   USERS_WATCH_MS:30000,     /* access re-check */
   QUALITY_POLL_MS:30000,    /* Export tab check */
@@ -1505,6 +1505,7 @@ html.lite .lg-dots,html.lite .lg-arc,html.lite .lg-core{animation:none!important
     <button class="btn btn-cmp" id="arBtn" aria-label="Toggle auto refresh" onclick="toggleAutoRefresh()" title="Auto Refresh">🔄 Auto</button>
     <button class="btn btn-c" id="refreshBtn" onclick="loadData()">⟳ Refresh</button>
     <button class="btn btn-d" onclick="clearAll()">✕ Clear</button>
+    <button class="btn btn-cmp" id="reqBell" style="display:none;position:relative" onclick="reqToggle(event)" title="Access / password requests">🔔 Requests <span id="reqCnt" class="req-cnt" style="display:none"></span></button>
     <div class="user-chip" id="userChip" style="display:none"><span class="uc-av" id="userAv">?</span><span class="uc-txt"><span class="uc-name" id="userName" dir="auto"></span><span class="uc-label" id="userLabel"></span></span></div>
     <button class="btn logout-btn" onclick="logoutUser()">🚪 Logout</button>
   </div>
@@ -1627,10 +1628,77 @@ function checkUsersAccess(){
   }).catch(()=>{}); // server hiccup / offline → keep the current session, try again next time
 }
 function startUsersWatch(){
+  try{reqStart();}catch(e){}
   if(_usersWatchTimer)return;
   _usersWatchTimer=setInterval(checkUsersAccess,USERS_WATCH_MS);
   document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'&&Date.now()-_usersLastCheck>5000)checkUsersAccess(); });
   window.addEventListener('online',checkUsersAccess);
+}
+
+/* ============ ADMIN: new access / password requests → bell + toast + browser notification ============
+   Only the admin emails below see the bell. The server (auth-server.gs) checks the admin again on every call. */
+const REQ_ADMINS=['mahmoudseif589@gmail.com'];
+const REQ_POLL_MS=45000;
+let _reqTimer=null,_reqList=[],_reqKnown=new Set(),_reqFirst=true,_reqBusy=false,_reqBase=document.title;
+function reqEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function reqIsAdmin(){return REQ_ADMINS.indexOf(String(getLoggedInEmail()||'').trim().toLowerCase())>=0;}
+function reqStart(){
+  if(_reqTimer||!reqIsAdmin())return;
+  if(!document.getElementById('reqCss')){const st=document.createElement('style');st.id='reqCss';
+    st.textContent='.req-cnt{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#c4293f;color:#fff;font-size:.62rem;font-weight:800;line-height:18px;text-align:center}'+
+    '#reqPanel{position:fixed;top:70px;right:16px;width:min(380px,calc(100vw - 24px));max-height:70vh;overflow:auto;z-index:9998;background:var(--card,var(--glass,#fff));color:var(--text);border:1px solid var(--border-light);border-radius:14px;box-shadow:var(--shadow-hover);display:none}'+
+    '#reqPanel.open{display:block}#reqPanel .rq-h{padding:12px 14px;font-weight:700;border-bottom:1px solid var(--border-light)}'+
+    '#reqPanel .rq{padding:12px 14px;border-bottom:1px solid var(--border-light);font-size:.8rem}#reqPanel .rq:last-child{border-bottom:0}'+
+    '#reqPanel .rq small{display:block;color:var(--muted);margin-top:2px}#reqPanel .rq-b{display:flex;gap:8px;margin-top:8px}'+
+    '#reqPanel .rq-b button{flex:1;padding:6px 10px;border-radius:8px;border:1px solid var(--border-light);cursor:pointer;font-weight:700;background:transparent;color:var(--text)}'+
+    '#reqPanel .rq-ok{background:rgba(13,148,136,.15)!important;border-color:rgba(13,148,136,.5)!important}#reqPanel .rq-no{background:rgba(196,41,63,.12)!important;border-color:rgba(196,41,63,.4)!important}'+
+    '#reqPanel .rq-e{padding:18px 14px;color:var(--muted);font-size:.8rem;text-align:center}';
+    document.head.appendChild(st);}
+  if(!document.getElementById('reqPanel')){const d=document.createElement('div');d.id='reqPanel';document.body.appendChild(d);}
+  document.addEventListener('click',e=>{const pn=document.getElementById('reqPanel');if(pn&&pn.classList.contains('open')&&!e.target.closest('#reqPanel,#reqBell'))pn.classList.remove('open');});
+  const b=document.getElementById('reqBell');if(b)b.style.display='';
+  reqPoll();_reqTimer=setInterval(reqPoll,REQ_POLL_MS);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)reqPoll();});
+}
+function reqToggle(ev){
+  if(ev)ev.stopPropagation();
+  try{if('Notification' in window&&Notification.permission==='default')Notification.requestPermission();}catch(e){}
+  const pn=document.getElementById('reqPanel');if(!pn)return;pn.classList.toggle('open');reqRender();if(pn.classList.contains('open'))reqPoll();
+}
+function reqPoll(){
+  if(!reqIsAdmin()||navigator.onLine===false)return;
+  authCall({action:'pending',token:getAuthToken()}).then(r=>{
+    if(!r||!r.ok||!Array.isArray(r.rows))return;
+    _reqList=r.rows;
+    const keys=new Set(r.rows.map(x=>x.row+'|'+x.email)),fresh=r.rows.filter(x=>!_reqKnown.has(x.row+'|'+x.email));
+    _reqKnown=keys;
+    if(fresh.length)reqAlert(fresh);
+    _reqFirst=false;reqRender();
+  }).catch(()=>{});
+}
+function reqAlert(fresh){
+  const first=fresh[0],lab=x=>(x.type==='Reset'?'Password reset: ':'Access request: ')+(x.name||x.email);
+  const msg=fresh.length>1?fresh.length+' new requests':lab(first);
+  try{showToast('🔔 '+(_reqFirst?_reqList.length+' request(s) waiting for approval':msg));}catch(e){}
+  try{if('Notification' in window&&Notification.permission==='granted'){
+    const n=new Notification('METI Dashboard',{body:_reqFirst?_reqList.length+' request(s) waiting for approval':msg,tag:'meti-req'});
+    n.onclick=()=>{window.focus();const pn=document.getElementById('reqPanel');if(pn){pn.classList.add('open');reqRender();}n.close();};
+  }}catch(e){}
+}
+function reqRender(){
+  const n=_reqList.length,c=document.getElementById('reqCnt');
+  if(c){c.textContent=n;c.style.display=n?'':'none';}
+  document.title=(n?'('+n+') ':'')+_reqBase;
+  const pn=document.getElementById('reqPanel');if(!pn||!pn.classList.contains('open'))return;
+  pn.innerHTML='<div class="rq-h">🔔 Pending requests ('+n+')</div>'+(n?_reqList.map((x,i)=>'<div class="rq"><b>'+(x.type==='Reset'?'🔑 Password reset':'🆕 Access request')+'</b> — '+reqEsc(x.name||'')+'<small>'+reqEsc(x.email)+'</small><small>'+reqEsc(x.at||'')+'</small><div class="rq-b"><button class="rq-ok" onclick="reqDecide('+i+',\'Approved\')">✓ Approve</button><button class="rq-no" onclick="reqDecide('+i+',\'Rejected\')">✕ Reject</button></div></div>').join(''):'<div class="rq-e">No pending requests 🎉</div>');
+}
+function reqDecide(i,status){
+  const x=_reqList[i];if(!x||_reqBusy)return;
+  if(!confirm((status==='Approved'?'Approve ':'Reject ')+(x.type==='Reset'?'password reset for ':'access for ')+x.email+'?'))return;
+  _reqBusy=true;
+  authCall({action:'decide',token:getAuthToken(),row:x.row,email:x.email,status:status}).then(r=>{
+    showToast(r&&r.ok?(status==='Approved'?'✓ Approved ':'✕ Rejected ')+x.email:'⚠️ Could not save ('+(r&&r.error||'error')+')');
+  }).catch(()=>showToast('⚠️ Could not reach the server')).then(()=>{_reqBusy=false;reqPoll();});
 }
 /* ============ END USERS DIRECTORY ============ */
 
