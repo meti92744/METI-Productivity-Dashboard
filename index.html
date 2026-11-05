@@ -4773,17 +4773,17 @@ function up(){var h=new Date().getHours(),t=h<12?'Good morning':h<18?'Good after
 .an-list{max-height:72vh;overflow-y:auto;padding:0 12px 6px}
 .an-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding:12px;border-top:1px solid var(--border-light)}
 .an-row:hover{background:var(--primary-light)}
-.an-c1{width:150px}.an-c2{width:230px}.an-c3{width:160px}
+.an-c1{width:150px}.an-c2{width:auto;min-width:230px;max-width:340px;flex:0 1 auto}.an-c3{width:160px}
 .an-c2 span.an-bad{color:#ef4444;font-weight:700}
 .an-rep{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;background:rgba(239,68,68,.16);border:1px solid rgba(239,68,68,.55);color:#ef4444;font:700 .66rem var(--font);cursor:help}
-.an-by{display:inline-block;max-width:100%;margin-top:3px;padding:2px 9px;border-radius:999px;background:rgba(99,102,241,.16);color:#8b8ff5;font:600 .68rem var(--font);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:top}
+.an-by{display:inline-block;max-width:100%;margin-top:3px;padding:2px 9px;border-radius:999px;background:rgba(99,102,241,.16);color:#8b8ff5;font:600 .68rem var(--font);white-space:normal;overflow-wrap:anywhere;vertical-align:top}
 .an-by.me{background:rgba(23,185,120,.16);color:#17b978}
 .an-sync{position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 8px;padding:9px 16px;border-radius:12px;background:rgba(245,158,11,.16);border:1px solid rgba(245,158,11,.55);color:var(--text);font:600 .8rem var(--font)}
 .an-sync.bad{background:rgba(239,68,68,.16);border-color:rgba(239,68,68,.6)}
 .an-sync button{flex:none;border:0;border-radius:999px;padding:6px 14px;background:#ef4444;color:#fff;font:700 .76rem var(--font);cursor:var(--cur-ptr,pointer)}
 .an-c1 a{font-weight:700;font-size:.82rem;color:var(--info);text-decoration:none}
 .an-row small,.an-row i{display:block;font-style:normal;font-size:.66rem;color:var(--muted)}
-.an-c2 span{display:block;font-size:.8rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.an-c2 span{display:block;font-size:.8rem;color:var(--text);white-space:normal;overflow:visible;overflow-wrap:anywhere;line-height:1.35}
 .an-c2 span i{display:inline;margin-right:6px}
 .an-c3{font-size:.78rem;color:var(--text)}
 .an-rt i{margin-bottom:4px}
@@ -4793,7 +4793,8 @@ function up(){var h=new Date().getHours(),t=h<12?'Good morning':h<18?'Good after
 .an-save.on{background:var(--accent);border-color:var(--accent);color:#fff;opacity:1}
 .an-save:disabled{cursor:not-allowed}
 .an-row.an-dirty{box-shadow:inset 3px 0 0 var(--accent)}
-.an-act{display:flex;align-items:center;gap:8px;flex:1;min-width:340px}
+.an-act{display:flex;align-items:flex-start;gap:8px;flex:1;min-width:340px}
+textarea.an-iss{resize:none;overflow:hidden;line-height:1.5;min-height:36px;box-sizing:border-box;display:block;white-space:pre-wrap;overflow-wrap:anywhere}
 .an-row .an-act .an-iss{flex:1;min-width:0;width:auto}
 .an-save{flex:none}
 .an-act.an-noiss .an-save{margin-left:auto}
@@ -4988,9 +4989,16 @@ function anRowRefresh(id){   // re-draw just this row (fast — no full re-rende
 }
 function anRow(t){
   const l=anLog[t.id]||{},v=anCur(t.id),lock=anLocked(t.id),dirty=anIsDirty(t.id),need=anNeedIssue(v),issOn=anIssueOn(v);
-  return `<div class="an-row${dirty?' an-dirty':''}" data-id="${t.id}"><label class="an-sel" title="Select to copy several tasks"><input type="checkbox" class="sel-cb" data-k="an" ${(SEL.kind==='an'&&SEL.map.has(t.id))?'checked ':''}onchange="selToggle('an','${t.id}',this.checked)"></label><div class="an-c1"><a href="${esc(t.link)}" target="_blank" rel="noopener">${t.id} ↗</a><small>${t.ts}</small></div><div class="an-c2"><span${anRepOf('lab',t.lab)?' class="an-bad"':''}><i>Labeler</i>${esc(t.lab)}${anRepBadge('lab',t.lab)}</span><span${anRepOf('qc',t.qc)?' class="an-bad"':''}><i>QTC</i>${esc(t.qc)}${anRepBadge('qc',t.qc)}</span></div><div class="an-c3">${t.type} · ${t.pass}<small>🧩 ${t.obj==null?'—':t.obj.toLocaleString()} objects</small>${l.analyst?`<span class="an-by${anNorm(l.analyst)===anNorm(anMyName())?' me':''}" title="Analyzed by ${esc(l.analyst)}">✔ ${esc(l.analyst)}</span>`:'<small>Not analyzed</small>'}</div><div class="an-rt"><i>Labeler rating</i>${anRateBtns(t.id,'L',v.lr,lock)}</div><div class="an-rt"><i>QTC rating</i>${anRateBtns(t.id,'Q',v.qr,lock)}</div><div class="an-act${issOn?'':' an-noiss'}"><input class="an-iss${need?' an-need':''}"${issOn?'':' style="display:none"'} data-id="${t.id}" placeholder="${need?'Required — write the problem…':'Write the problem… (Enter to save)'}" value="${esc(v.issue||'')}"${lock?' disabled':''} oninput="anTyping('${t.id}',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();anCommit('${t.id}')}">${anBtnHtml(t.id)}<button class="an-copy" type="button" title="Copy link, names, ratings and the problem (without the analyst name)" onclick="anCopy('${t.id}',this)">📋 Copy</button></div></div>`;
+  return `<div class="an-row${dirty?' an-dirty':''}" data-id="${t.id}"><label class="an-sel" title="Select to copy several tasks"><input type="checkbox" class="sel-cb" data-k="an" ${(SEL.kind==='an'&&SEL.map.has(t.id))?'checked ':''}onchange="selToggle('an','${t.id}',this.checked)"></label><div class="an-c1"><a href="${esc(t.link)}" target="_blank" rel="noopener">${t.id} ↗</a><small>${t.ts}</small></div><div class="an-c2"><span${anRepOf('lab',t.lab)?' class="an-bad"':''}><i>Labeler</i>${esc(t.lab)}${anRepBadge('lab',t.lab)}</span><span${anRepOf('qc',t.qc)?' class="an-bad"':''}><i>QTC</i>${esc(t.qc)}${anRepBadge('qc',t.qc)}</span></div><div class="an-c3">${t.type} · ${t.pass}<small>🧩 ${t.obj==null?'—':t.obj.toLocaleString()} objects</small>${l.analyst?`<span class="an-by${anNorm(l.analyst)===anNorm(anMyName())?' me':''}" title="Analyzed by ${esc(l.analyst)}">✔ ${esc(l.analyst)}</span>`:'<small>Not analyzed</small>'}</div><div class="an-rt"><i>Labeler rating</i>${anRateBtns(t.id,'L',v.lr,lock)}</div><div class="an-rt"><i>QTC rating</i>${anRateBtns(t.id,'Q',v.qr,lock)}</div><div class="an-act${issOn?'':' an-noiss'}"><textarea rows="1" class="an-iss${need?' an-need':''}"${issOn?'':' style="display:none"'} data-id="${t.id}" placeholder="${need?'Required — write the problem…':'Write the problem… (Enter to save)'}"${lock?' disabled':''} oninput="anTyping('${t.id}',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();anCommit('${t.id}')}">${esc(v.issue||'')}</textarea>${anBtnHtml(t.id)}<button class="an-copy" type="button" title="Copy link, names, ratings and the problem (without the analyst name)" onclick="anCopy('${t.id}',this)">📋 Copy</button></div></div>`;
 }
 function anTyping(id,val){anDraftSet(id,{issue:val});anMark(id);}
+/* auto-grow the Issue box so a long problem is fully visible */
+function anFit(el){if(!el||el.offsetParent===null)return false;el.style.height='auto';const h=el.scrollHeight;if(!h)return false;el.style.height=(h+2)+'px';return true;}
+function anFitAll(force){document.querySelectorAll('textarea.an-iss'+(force?'':':not([data-fit])')).forEach(el=>{if(anFit(el))el.dataset.fit='1';});}
+document.addEventListener('input',e=>{const t=e.target;if(t&&t.classList&&t.classList.contains('an-iss'))anFit(t);},true);
+(function(){let q=0;const sched=()=>{if(q)return;q=requestAnimationFrame(()=>{q=0;anFitAll(false);});};
+  new MutationObserver(sched).observe(document.body,{childList:true,subtree:true});
+  window.addEventListener('resize',()=>{document.querySelectorAll('textarea.an-iss[data-fit]').forEach(e=>delete e.dataset.fit);sched();});})();
 function anRate(id,who,val){
   if(!anAllowed()||anLocked(id))return;
   const v=anCur(id),was=who==='L'?v.lr:v.qr;
