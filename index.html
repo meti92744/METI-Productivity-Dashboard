@@ -266,6 +266,9 @@ html[data-theme="dark"] .tm-in{color-scheme:dark;}
 .arcs-res{overflow:auto;padding:4px 18px 18px;display:flex;flex-direction:column;gap:10px;}
 .arcs-card{border:1px solid var(--border);border-radius:var(--radius);background:var(--card);padding:12px 14px;}
 .arcs-tab{display:inline-block;font-family:var(--mono);font-size:.58rem;font-weight:700;color:var(--accent);background:var(--accent-light);border-radius:5px;padding:2px 8px;margin-bottom:8px;}
+.arcs-hd2{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;}.arcs-hd2 .arcs-tab{margin-bottom:0;}
+.arcs-copy{flex:none;background:var(--elevated);border:1px solid var(--border-light);color:var(--text);border-radius:10px;padding:5px 11px;font:600 .68rem var(--font);cursor:pointer;}
+.arcs-copy:hover{border-color:var(--accent)}.arcs-copy.done{background:rgba(23,185,120,.14);border-color:rgba(23,185,120,.55);color:#17b978}
 .arcs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px 16px;}
 .arcs-kv{min-width:0;}.arcs-kv .k{font-family:var(--mono);font-size:.52rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
 .arcs-kv .v{font-size:.68rem;color:var(--text);word-break:break-all;}
@@ -2738,7 +2741,8 @@ async function runArchiveSearch(){
           if(shown>=MAX)continue;
           shown++;
           const kv=t.raw.map((name,c)=>{let v=String(row[c]==null?'':row[c]).trim();if(v&&isTsHdr(name))v=fmtDT(v);return v?`<div class="arcs-kv"><div class="k">${esc(name||('col '+(c+1)))}</div><div class="v">${esc(v)}</div></div>`:'';}).join('');
-          res.insertAdjacentHTML('beforeend',`<div class="arcs-card"><span class="arcs-tab">📦 ${esc(tab.name)}</span><div class="arcs-grid">${kv}</div></div>`);
+          const cpTxt=t.raw.map((name,c)=>{let v=String(row[c]==null?'':row[c]).trim();if(v&&isTsHdr(name))v=fmtDT(v);return v?(name||('col '+(c+1)))+': '+v:'';}).filter(Boolean).join('\n');   // every field of the row, exactly as shown on the card
+          res.insertAdjacentHTML('beforeend',`<div class="arcs-card" data-copy="${encodeURIComponent(cpTxt)}"><div class="arcs-hd2"><span class="arcs-tab">📦 ${esc(tab.name)}</span><button class="arcs-copy" type="button" title="Copy all the data of this task" onclick="arcCopyCard(this)">📋 Copy</button></div><div class="arcs-grid">${kv}</div></div>`);
         }
       }
     }
@@ -4180,6 +4184,14 @@ function rdCopyText(r){
   if(qc)L.push('QTC: '+qc+(qr?' — '+qr:''));
   if(issue)L.push('Issue: '+issue);
   return L.join('\n');
+}
+function arcCopyCard(btn){
+  const card=btn&&btn.closest?btn.closest('.arcs-card'):null;if(!card)return;
+  let txt='';try{txt=decodeURIComponent(card.dataset.copy||'');}catch(e){}
+  if(!txt){showToast('⚠️ Nothing to copy');return;}
+  const done=()=>{btn.textContent='✓ Copied';btn.classList.add('done');setTimeout(()=>{btn.textContent='📋 Copy';btn.classList.remove('done');},1400);};
+  const fb=()=>{try{const ta=document.createElement('textarea');ta.value=txt;ta.style.cssText='position:fixed;left:-9999px;top:0';document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();done();}catch(e){showToast('⚠️ Could not copy');}};
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(done).catch(fb);else fb();
 }
 function rdCopy(i,btn){
   const r=(window._rdRows||[])[i];if(!r)return;
