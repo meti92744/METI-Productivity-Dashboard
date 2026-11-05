@@ -4822,7 +4822,7 @@ textarea.an-iss{resize:none;overflow:hidden;line-height:1.5;min-height:36px;box-
 </style>
 <script id="analysis-js">
 /* ===== Analysis tab ===== */
-const ANALYSIS_API_URL='https://script.google.com/macros/s/AKfycbxovJweUWg8m_AQJ5lozEhTkCySYimn07ILeAw_LEkn0jJ_K-6P23Fqy9UP0CYLRt96/exec';            // paste the Apps Script /exec URL here (see analysis_script.gs). '' = ratings stay in this browser only
+const ANALYSIS_API_URL='https://script.google.com/macros/s/AKfycbw0SkShqAtIvhB_6wi5t5kj7XAwL1Gs3wi1CqoMTS1duJsNgehvkt9H3rEytt7-dQM/exec';            // paste the Apps Script /exec URL here (see analysis_script.gs). '' = ratings stay in this browser only
 const ANALYSIS_LOG_SHEET='Analysis Log';
 const ANALYSIS_USERS={'mahmoudseif589@gmail.com':['Seeif Waleed','SV'],'heshamnaser996@gmail.com':['Hesham','SV'],'me917993@meti.ai':['Ahmed Sayed','QT'],'fpd.sobhy@gmail.com':['Mohmed Sobhy','QT'],'m6945663@gmail.com':['Mickey','QT'],'mohamedd.hafez.7@gmail.com':['Hafez','QT'],'mohamed.nasrr55@gmail.com':['Nasr','QT'],'mk2275489@gmail.com':['Mahmoud Khaled','QT']};  // only these accounts see the Analysis tab
 const ANALYSTS=['Ahmed Sayed','Mohmed Sobhy','Mickey','Hafez','Nasr','Mahmoud Khaled'];   // analyst dropdown (the QT accounts)
@@ -5379,7 +5379,7 @@ function tm(t){var d=new Date(t);return isNaN(d)?'':d.toLocaleTimeString([],{hou
 function render(stick){var L=$('chList'),near=L.scrollHeight-L.scrollTop-L.clientHeight<90;
  var list=msgs.filter(function(m){return convOf(m)===cur}).sort(function(a,b){return a.ts-b.ts});
  L.innerHTML=list.length?list.map(function(m,i){var mine=m.from===me;
-  return '<div class="ch-m'+(mine?' me':'')+(m.pend?' pend':'')+(m.fail?' fail':'')+'" '+(m.fail?'onclick="meegChat.retry(\''+m.cid+'\')"':'')+'>'+(!mine&&cur==='all'?'<span class="n">'+E(nameOf(m.from))+'</span>':'')+'<span dir="auto">'+E(m.text)+'</span><time>'+(m.fail?'⚠ not sent — tap to retry':tm(m.ts))+'</time></div>'}).join('')
+  return '<div class="ch-m'+(mine?' me':'')+(m.pend?' pend':'')+(m.fail?' fail':'')+'" '+(m.fail?'onclick="meegChat.retry(\''+m.cid+'\')"':'')+'>'+(!mine&&cur==='all'?'<span class="n">'+E(nameOf(m.from))+'</span>':'')+'<span dir="auto">'+E(m.text)+'</span><time>'+(m.fail?'⚠ not sent'+(m.err?' ('+E(m.err)+')':'')+' — tap to retry':tm(m.ts))+'</time></div>'}).join('')
   :'<div class="ch-e">'+(fail>2?'Chat is not set up yet.<br>Add the <b>Chat</b> script to the Apps Script and create the “Chat” tab.':'No messages yet — say hi 👋')+'</div>';
  if(stick||near)L.scrollTop=L.scrollHeight;
  $('chSub').textContent=cur==='all'?'Everyone on the dashboard':'Direct message · '+nameOf(cur);tabs();badge()}
@@ -5406,7 +5406,7 @@ async function pull(first){
 function loop(){clearTimeout(timer);timer=setTimeout(function(){if(!document.hidden)pull();loop()},isOpen?4000:25000)}
 async function post(m){
  try{var r=await fetch(ANALYSIS_API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},cache:'no-store',body:JSON.stringify({action:'chatSend',email:me,token:getAuthToken(),name:nameOf(me),to:m.to,text:m.text,cid:m.cid})});
-  var j=await r.json();if(!j||!j.ok)throw 0;m.pend=0;m.fail=0;setTimeout(pull,1200)}catch(_){m.pend=0;m.fail=1}render()}
+  var t=await r.text(),j;try{j=JSON.parse(t)}catch(_){throw 'server error (script not deployed with chat / script crashed)'}if(!j||!j.ok)throw (j&&j.error)||'rejected by server';m.pend=0;m.fail=0;m.err='';setTimeout(pull,1200)}catch(e){m.pend=0;m.fail=1;m.err=String(e&&e.message||e||'no connection').slice(0,120);console.warn('chatSend failed:',m.err)}render()}
 window.meegChat={
  toggle:function(){isOpen?this.close():this.open()},
  open:function(){if(!me)return;isOpen=true;$('chat').classList.add('open');var g=$('gdChat'),r=$('railChat');g&&g.classList.add('on');r&&r.classList.add('on');markSeen();render(true);pull();loop();setTimeout(function(){$('chIn').focus()},350)},
