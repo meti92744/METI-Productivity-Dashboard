@@ -4822,7 +4822,7 @@ textarea.an-iss{resize:none;overflow:hidden;line-height:1.5;min-height:36px;box-
 </style>
 <script id="analysis-js">
 /* ===== Analysis tab ===== */
-const ANALYSIS_API_URL='https://script.google.com/macros/s/AKfycbzvVC7dqv-BA7isxB2P9Gqr5gYO4vQ_RM5_fqWNb-kiUe8ef46jMbxttaW9z5l0QyPN/exec';            // paste the Apps Script /exec URL here (see analysis_script.gs). '' = ratings stay in this browser only
+const ANALYSIS_API_URL='https://script.google.com/macros/s/AKfycbx2ZmCnmFok4xG8xyEmWi8LAv2zrV89uZ5ykrp4HsSov2bD4i_wbPjRmFLSCKNoXhEs/exec';            // paste the Apps Script /exec URL here (see analysis_script.gs). '' = ratings stay in this browser only
 const ANALYSIS_LOG_SHEET='Analysis Log';
 const ANALYSIS_USERS={'mahmoudseif589@gmail.com':['Seeif Waleed','SV'],'heshamnaser996@gmail.com':['Hesham','SV'],'me917993@meti.ai':['Ahmed Sayed','QT'],'fpd.sobhy@gmail.com':['Mohmed Sobhy','QT'],'m6945663@gmail.com':['Mickey','QT'],'mohamedd.hafez.7@gmail.com':['Hafez','QT'],'mohamed.nasrr55@gmail.com':['Nasr','QT'],'mk2275489@gmail.com':['Mahmoud Khaled','QT']};  // only these accounts see the Analysis tab
 const ANALYSTS=['Ahmed Sayed','Mohmed Sobhy','Mickey','Hafez','Nasr','Mahmoud Khaled'];   // analyst dropdown (the QT accounts)
@@ -4936,10 +4936,11 @@ function anCol(n){return hdrs.findIndex(h=>h.toLowerCase()===n.toLowerCase());}
 function anYmd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function anTasks(){
   const c={id:anCol('Id'),lab:anCol('Labeler Name'),qc:anCol('Qtc Name'),st:anCol('Stage'),pass:anCol('Pass'),at:tsColIdx(hdrs),lnk:anCol('Task Link'),sh:anCol('Shift'),obj:anCol('Object Count')};
-  return rawRows.map(r=>{const d=parseTs(r[c.at]);const ok=!!d;const stage=String(r[c.st]||'');
+  return Array.from(rawRows.map(r=>{const d=parseTs(r[c.at]);const ok=!!d;const stage=String(r[c.st]||'');
     return{id:String(r[c.id]||'').trim(),lab:String(r[c.lab]||'').trim(),qc:String(r[c.qc]||'').replace(/\s*\([^)]*\)\s*$/,'').trim(),
       type:/lidar/i.test(stage)?'Lidar':'Lane Line',pass:String(r[c.pass]||'').trim(),shiftRaw:(c.sh>=0?String(r[c.sh]||'').trim():''),obj:(c.obj>=0?(v=>isNaN(v)?null:v)(parseFloat(String(r[c.obj]??'').replace(/,/g,''))):null),link:String(r[c.lnk]||''),shift:(v=>/over/.test(v)?'ON':/night/.test(v)?'N':/morn|day/.test(v)?'M':'')(String(r[c.sh]||'').toLowerCase()),time:ok?d.getTime():0,day:ok?anYmd(d):'',ts:ok?fmt12(d):''};
-  }).filter(t=>t.id);
+  }).filter(t=>t.id).reduce((m,t)=>{const o=m.get(t.id);if(!o||t.time>=o.time)m.set(t.id,t);return m;},new Map()).values()) /* ONE row per Task ID: duplicate rows in the source sheet are collapsed (the latest one is kept), so a task is shown and counted once */
+  ;
 }
 const AN_RANK_M=5;   // weight of the overall average when ranking: a name with few tasks is pulled toward it
 function anWScore(cnt,prior){const n=RATES.reduce((s,k)=>s+(cnt[k]||0),0);return n?(anScore(cnt)*n+prior*AN_RANK_M)/(n+AN_RANK_M):0;}
