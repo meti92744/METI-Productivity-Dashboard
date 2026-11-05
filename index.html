@@ -30,6 +30,12 @@
 window.MEEG_CONFIG={
   SHEET_ID:'1g9mPKQMactJKC-BP0Ik3Cw72PLUXCb4VTKFbHYLjc5I',
   ARCHIVE_SHEET_ID:'1BSeiRLiRTSmH_Et0B8TQAPKsuY98CVSB-gcg6ai51YQ',
+  /* EXTRA archive spreadsheets (searched together with the main one). Each: id = the code between /d/ and /edit, tabs = [{name, gid}] (gid = the number after "gid=" in the tab's URL).
+     Must be shared "anyone with the link can view". To add another tab of the same file, add another {name,gid}. */
+  ARCHIVE_EXTRA:[
+    {id:'1tHRi99llqT1sFIUX4Ns8NNtPZ_PVMLkhy9ogtiAL-kg',tabs:[{name:'Archive 2',gid:0}]},
+    {id:'1vpsYtvoZSKLsUeKj-FTXVGJmyFygSSck8DUIODJha_A',tabs:[{name:'Backup Date Base',gid:0}]}   /* the Backup sheet: ALSO searchable as an archive tab (its current rows stay merged into the dashboard exactly as before) */
+  ],
   AUTH_API_URL:'https://script.google.com/macros/s/AKfycbxJGBTz3j97tMb9NFT-IhErUubUeuyiGQWifIfLHDtt7d5sWpyHk1irGJuujpxL5dONww/exec',
   REFRESH_INTERVAL:60,      /* seconds between auto data refreshes */
   USERS_WATCH_MS:30000,     /* access re-check */
@@ -2389,7 +2395,7 @@ let archiveIdInfo={},archiveLoading=false,archiveLoaded=false,archiveStatus='',a
 let archiveRemoteTabs=0,archiveFailedTabs=[],archiveFoundCount=0,archiveRerun=false,archiveOkTabs=new Set(),archiveOkKey='';
 const ARCHIVE_TABS_CACHE_KEY='meeg_archive_tabs_v1';
 let archiveTabList=ARCHIVE_TABS.map(n=>({name:n})),archiveTabsSource='manual list',archiveTabsResolvedAt=0,archiveLastSig='',archiveSearchedIds=new Set(),archiveSearchedSig='';
-function archiveTabKey(t){return t.gid!=null&&t.gid!==''?'g'+t.gid:'n'+t.name;}
+function archiveTabKey(t){const p=t.sheetId?'x'+String(t.sheetId).slice(0,10)+'_':'';return p+(t.gid!=null&&t.gid!==''?'g'+t.gid:'n'+t.name);}
 // works out WHICH tabs to search: auto-discovered (Apps Script or Sheets API) → last saved auto list → manual ARCHIVE_TABS.
 // re-checked at most every 10 minutes, so a tab added during the day is picked up on the next refresh.
 async function resolveArchiveTabs(){
@@ -2417,6 +2423,8 @@ async function resolveArchiveTabs(){
     try{const c=JSON.parse(localStorage.getItem(ARCHIVE_TABS_CACHE_KEY)||'null');if(Array.isArray(c)&&c.length){list=c;src='last saved auto list';}}catch(e){}
   }
   if(!list){list=ARCHIVE_TABS.map(n=>({name:n}));src='manual list';}
+  /* extra archive spreadsheets: always appended (their tabs carry their own sheetId, so they never clash with the main archive's gids) */
+  try{(MEEG_CONFIG.ARCHIVE_EXTRA||[]).forEach(x=>{if(x&&x.id)(x.tabs||[]).forEach(t=>list.push({name:String(t.name||'Archive'),gid:t.gid,sheetId:x.id}));});}catch(e){}
   archiveTabList=list;archiveTabsSource=src;archiveTabsResolvedAt=Date.now();
   return list;
 }
@@ -2452,7 +2460,7 @@ function computeUnresolvedQualityIds(){
 // throttles parallel gviz requests) and treats an HTML answer (login / error page) as a failure, not as an empty tab
 async function fetchArchiveTab(tab){
   const sel=tab.gid!=null&&tab.gid!==''?`gid=${encodeURIComponent(tab.gid)}`:`sheet=${encodeURIComponent(tab.name)}`;
-  const url=`https://docs.google.com/spreadsheets/d/${ARCHIVE_SHEET_ID}/gviz/tq?tqx=out:csv&headers=1&${sel}`;
+  const url=`https://docs.google.com/spreadsheets/d/${tab.sheetId||ARCHIVE_SHEET_ID}/gviz/tq?tqx=out:csv&headers=1&${sel}`;
   for(let attempt=1;attempt<=3;attempt++){
     try{
       const r=await fetch(url);
@@ -2778,7 +2786,7 @@ async function loadArchiveIds(){
       const tab=todo[idx++];
       // 1st choice: server-side search through the Apps Script (ignores sheet filters); 2nd: direct gviz CSV read
       let remote=null;
-      if(ARCHIVE_TABS_URL&&tab.gid!=null)remote=await remoteScanArchiveTab(tab,remaining);
+      if(ARCHIVE_TABS_URL&&tab.gid!=null&&!tab.sheetId)remote=await remoteScanArchiveTab(tab,remaining);
       if(remote){
         archiveFetched++;archiveRemoteTabs++;updateArchiveBar();
         remote.forEach(h=>{const em=String(h.email||'').trim(),nm=fmtPerson(h.name),qtc=String(h.qtc||'').trim();
