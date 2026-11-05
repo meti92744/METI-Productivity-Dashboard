@@ -34,7 +34,7 @@ window.MEEG_CONFIG={
      Must be shared "anyone with the link can view". To add another tab of the same file, add another {name,gid}. */
   ARCHIVE_EXTRA:[
     {id:'1tHRi99llqT1sFIUX4Ns8NNtPZ_PVMLkhy9ogtiAL-kg',tabs:[{name:'Archive 2',gid:0}]},
-    {id:'1vpsYtvoZSKLsUeKj-FTXVGJmyFygSSck8DUIODJha_A',tabs:[{name:'Backup Date Base',gid:0}]}   /* the Backup sheet: ALSO searchable as an archive tab (its current rows stay merged into the dashboard exactly as before) */
+    {id:'1vpsYtvoZSKLsUeKj-FTXVGJmyFygSSck8DUIODJha_A',tabs:[{name:'Backup Date Base',gid:0}]}   /* the Backup sheet: archive only (it is no longer merged into the dashboard) */
   ],
   AUTH_API_URL:'https://script.google.com/macros/s/AKfycbxJGBTz3j97tMb9NFT-IhErUubUeuyiGQWifIfLHDtt7d5sWpyHk1irGJuujpxL5dONww/exec',
   REFRESH_INTERVAL:60,      /* seconds between auto data refreshes */
@@ -3408,7 +3408,7 @@ function simpleHash(s){let h=0;for(let i=0;i<s.length;i++){h=(h<<5)-h+s.charCode
    - BACKUP_SHEET_ID : the long code between /d/ and /edit in the backup sheet URL ('' = turn the backup OFF)
    - BACKUP_SHEET_GID: the number after gid= in the URL while you're on the "Backup Date Base" tab
    - The backup sheet must be shared as "Anyone with the link can view". */
-const BACKUP_SHEET_ID='1vpsYtvoZSKLsUeKj-FTXVGJmyFygSSck8DUIODJha_A';
+const BACKUP_SHEET_ID='';   /* OFF: the Backup data is old, so it no longer goes into the dashboard. It is searched as an ARCHIVE tab only (see ARCHIVE_EXTRA at the top). To turn the merge back on put '1vpsYtvoZSKLsUeKj-FTXVGJmyFygSSck8DUIODJha_A' here. */
 const BACKUP_SHEET_GID='0';
 function csvEsc(v){v=v==null?'':String(v);return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
 function tableToCSV(t){return t.map(r=>r.map(csvEsc).join(',')).join('\n');}
