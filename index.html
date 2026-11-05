@@ -4822,7 +4822,7 @@ textarea.an-iss{resize:none;overflow:hidden;line-height:1.5;min-height:36px;box-
 </style>
 <script id="analysis-js">
 /* ===== Analysis tab ===== */
-const ANALYSIS_API_URL='https://script.google.com/macros/s/AKfycbzvVC7dqv-BA7isxB2P9Gqr5gYO4vQ_RM5_fqWNb-kiUe8ef46jMbxttaW9z5l0QyPN/exec';            // paste the Apps Script /exec URL here (see analysis_script.gs). '' = ratings stay in this browser only
+const ANALYSIS_API_URL='https://script.google.com/macros/s/AKfycbzQFl1oa7MgdcH6ETuTJiViAi45G9vVde2xo8R_wIX-EIfNl1uEvvmUr03wNsVJSZV0/exec';            // paste the Apps Script /exec URL here (see analysis_script.gs). '' = ratings stay in this browser only
 const ANALYSIS_LOG_SHEET='Analysis Log';
 const ANALYSIS_USERS={'mahmoudseif589@gmail.com':['Seeif Waleed','SV'],'heshamnaser996@gmail.com':['Hesham','SV'],'me917993@meti.ai':['Ahmed Sayed','QT'],'fpd.sobhy@gmail.com':['Mohmed Sobhy','QT'],'m6945663@gmail.com':['Mickey','QT'],'mohamedd.hafez.7@gmail.com':['Hafez','QT'],'mohamed.nasrr55@gmail.com':['Nasr','QT'],'mk2275489@gmail.com':['Mahmoud Khaled','QT']};  // only these accounts see the Analysis tab
 const ANALYSTS=['Ahmed Sayed','Mohmed Sobhy','Mickey','Hafez','Nasr','Mahmoud Khaled'];   // analyst dropdown (the QT accounts)
@@ -4948,13 +4948,13 @@ function anLoadLog(cb){
   fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&headers=1&sheet=${encodeURIComponent(ANALYSIS_LOG_SHEET)}&_=${Date.now()}`,{cache:'no-store'})
    .then(r=>r.ok?r.text():Promise.reject()).then(t=>{const rows=parseCSV(t);if(rows.length&&!/task id/i.test(rows[0].join(',')))throw 0;anLog={};anLogRows=[];if(rows.length>1){const h=rows[0].map(x=>x.trim().toLowerCase());
      const ix=n=>h.indexOf(n);rows.slice(1).forEach(r=>{const id=String(r[ix('task id')]||'').trim();if(id){const _e={analyst:r[ix('analyst')]||'',lr:r[ix('labeler rating')]||'',qr:r[ix('qc rating')]||'',issue:String(r[ix('issue')]||'').trim(),date:r[ix('analysis date')]||''};anLog[id]=_e;anLogRows.push(Object.assign({id},_e));}});}
-     try{localStorage.setItem('an_log',JSON.stringify(anLog));}catch(_){}anFinishLoad(cb);}).catch(()=>{
+     anLogRows=anDedupeRows(anLogRows);try{localStorage.setItem('an_log',JSON.stringify(anLog));}catch(_){}anFinishLoad(cb);}).catch(()=>{
      const local=()=>{try{anLog=JSON.parse(localStorage.getItem('an_log')||'{}');}catch(_){anLog={};}anLogRows=[];anFinishLoad(cb);};
      if(!ANALYSIS_API_URL)return local();
      /* the sheet can't be read directly (e.g. the Analysis Log tab is hidden) → ask the script for it */
      fetch(ANALYSIS_API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},cache:'no-store',body:JSON.stringify({action:'log',email:anMe(),token:getAuthToken()})})
       .then(r=>r.json()).then(j=>{if(!j||!j.ok||!Array.isArray(j.rows))throw 0;anLog={};anLogRows=[];j.rows.forEach(r=>{const id=String(r[0]||'').trim();if(id){const _e={analyst:r[1]||'',lr:r[2]||'',qr:r[3]||'',issue:String(r[4]||'').trim(),date:r[5]||''};anLog[id]=_e;anLogRows.push(Object.assign({id},_e));}});
-        try{localStorage.setItem('an_log',JSON.stringify(anLog));}catch(_){}anFinishLoad(cb);}).catch(local);
+        anLogRows=anDedupeRows(anLogRows);try{localStorage.setItem('an_log',JSON.stringify(anLog));}catch(_){}anFinishLoad(cb);}).catch(local);
    });
 }
 /* ---- Analysis save model ----
@@ -5011,11 +5011,31 @@ function anRate(id,who,val){
   }
 }
 /* one request at a time; if the server says the auth check failed → refresh the token and retry */
+/* ---- anti-duplicate helpers ---- */
+function anNewRid(){return Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10);}
+function anDedupeRows(a){const m=new Map();a.forEach(r=>{m.delete(r.id);m.set(r.id,r);});return [...m.values()];}   // one row per Task ID (the last one wins)
+function anPendReload(){   // the queue lives in localStorage and is shared by every open tab → always work from the stored copy
+  try{const o=JSON.parse(localStorage.getItem('an_pending')||'{}')||{};let ch=false;Object.keys(o).forEach(k=>{if(!o[k].rid){o[k].rid=anNewRid();ch=true;}});anPending=o;if(ch)anPendSave();}catch(_){}
+}
+async function anInSheet(e){   // "did the earlier, unanswered attempt actually reach the sheet?" — same Task ID with the same ratings + problem
+  try{
+    const r=await fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&headers=1&sheet=${encodeURIComponent(ANALYSIS_LOG_SHEET)}&_=${Date.now()}`,{cache:'no-store'});
+    if(!r.ok)return false;
+    const rows=parseCSV(await r.text());if(rows.length<2)return false;
+    const h=rows[0].map(x=>String(x).trim().toLowerCase()),ix=n=>h.indexOf(n);if(ix('task id')<0)return false;
+    const n=v=>String(v==null?'':v).trim();
+    return rows.slice(1).some(x=>n(x[ix('task id')])===n(e.id)&&n(x[ix('labeler rating')])===n(e.lr)&&n(x[ix('qc rating')])===n(e.qr)&&n(x[ix('issue')])===n(e.issue));
+  }catch(_){return false;}
+}
 async function anSend(e){
   let err='';
+  if(!e.rid)e.rid=anNewRid();
+  if(e.tried&&await anInSheet(e))return{ok:true};   // an earlier attempt got no answer — it may already be in the sheet, so do NOT add it again
+  e.tried=1;anPendSave();
   for(let i=0;i<3;i++){
+    if(i>0&&await anInSheet(e))return{ok:true};     // retrying after a lost answer: look first
     try{
-      const r=await fetch(ANALYSIS_API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},cache:'no-store',body:JSON.stringify({action:'rate',email:anMe(),token:getAuthToken(),taskId:e.id,analyst:e.analyst,labelerRating:e.lr,qcRating:e.qr,issue:e.issue||'',date:e.date})});
+      const r=await fetch(ANALYSIS_API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},cache:'no-store',body:JSON.stringify({action:'rate',email:anMe(),token:getAuthToken(),taskId:e.id,analyst:e.analyst,labelerRating:e.lr,qcRating:e.qr,issue:e.issue||'',date:e.date,reqId:e.rid})});
       const j=await r.json();
       if(j&&j.ok)return{ok:true};
       err=(j&&j.error)||'server error';
@@ -5035,7 +5055,7 @@ function anCommit(id){
   const v=anCur(id);
   if(!anIssueOn(v))v.issue='';
   if(anNeedIssue(v)){anBigAlert(id);return;}
-  const e={id:id,lr:v.lr||'',qr:v.qr||'',issue:String(v.issue||'').trim(),analyst:(anLog[id]&&anLog[id].analyst&&anIsSV()?anLog[id].analyst:ANALYSIS_USERS[anMe()][0]),date:anYmd(new Date())};
+  const e={id:id,lr:v.lr||'',qr:v.qr||'',issue:String(v.issue||'').trim(),analyst:(anLog[id]&&anLog[id].analyst&&anIsSV()?anLog[id].analyst:ANALYSIS_USERS[anMe()][0]),date:anYmd(new Date()),rid:anNewRid()};
   anLog[id]={analyst:e.analyst,lr:e.lr,qr:e.qr,issue:e.issue,date:e.date};   // instant: it is "Saved" right now
   anMineAdd(id);anRepC=null;
   delete anDraft[id];anFailed.delete(id);
@@ -5044,17 +5064,23 @@ function anCommit(id){
   anRowRefresh(id);
   anFlush();
 }
-async function anFlush(){   // background upload queue
+function anFlush(){   // only ONE tab uploads at a time (Web Locks); the others wait their turn
+  if(anFlushing)return;
+  if(navigator.locks&&navigator.locks.request)return navigator.locks.request('an_flush',{ifAvailable:true},lk=>{if(lk)return anFlushRun();setTimeout(()=>{try{anPendReload();}catch(_){}if(Object.keys(anPending).length)anFlush();},3000);});
+  return anFlushRun();
+}
+async function anFlushRun(){   // background upload queue
   if(anFlushing||!anAllowed())return;
   if(!ANALYSIS_API_URL){anPending={};anPendSave();return;}
   anFlushing=true;let bad=false;
   try{
     for(let g=0;g<1000;g++){
+      anPendReload();
       const id=Object.keys(anPending)[0];if(!id)break;
       const e=anPending[id],res=await anSend(e);
-      if(res.ok){if(anPending[id]===e){delete anPending[id];anPendSave();}anFailed.delete(id);anMark(id);}
+      if(res.ok){anPendReload();if(anPending[id]&&anPending[id].rid===e.rid){delete anPending[id];anPendSave();}anFailed.delete(id);anMark(id);}
       else if(/^locked|not_allowed|access removed/i.test(res.error)){   // a real refusal — retrying won't help
-        if(anPending[id]===e){delete anPending[id];anPendSave();}delete anRecent[id];
+        anPendReload();if(anPending[id]&&anPending[id].rid===e.rid){delete anPending[id];anPendSave();}delete anRecent[id];
         showToast('⚠️ Task '+id+' was not saved — '+res.error);anResync();
       }else{const first=!anFailed.has(id);anFailed.add(id);bad=true;anMark(id);if(first)showToast('⚠️ Not saved to the sheet yet — '+res.error+' · retrying…');break;}
     }
