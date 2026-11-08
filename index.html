@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>METI Productivity</title>
 <meta name="app-version" content="12"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://docs.google.com https://script.google.com https://*.googleusercontent.com https://sheets.googleapis.com; worker-src blob:; object-src 'none'; base-uri 'none'; form-action 'none'"/>
+<meta name="referrer" content="no-referrer"/>
 <script id="lite-guard">
 /* Crash guard: "meeg_boot" is set while the page is starting / rebuilding a screen and cleared once it settled.
    If the browser KILLS the tab in between, the flag is still there on the next start → we open in LITE mode
@@ -1942,7 +1944,7 @@ async function attemptLogin(){
       }
       errEl.textContent='Sending request…';lgSteps(0,0,'Sending request…');
       let r;
-      try{r=await authCall(isSignup?{action:'signup',name:nm,email:raw,password:pass}:{action:'forgot',email:raw});}catch(e){return fail('Could not reach the server — check your connection and try again ('+String(e&&e.message||e).slice(0,70)+')');}
+      try{r=await authCall(isSignup?{action:'signup',name:nm,email:raw,password:pass}:{action:'forgot',email:raw});}catch(e){return fail('Could not reach the server — check your connection and try again');}
       let doneMsg='';
       if(r&&r.ok&&!r.pending)doneMsg=isSignup?'Request sent ✓ — you can sign in with this email and password once the administrator approves you.':'Reset request sent ✓ — once the administrator approves it, sign in with your email and create a new password.';
       else if((r&&r.ok&&r.pending)||(r&&r.error==='pending'))doneMsg='You already have a request waiting for approval ⏳';
@@ -1963,8 +1965,8 @@ async function attemptLogin(){
     if(_loginStep==='email'){
       errEl.textContent='Checking…';lgSteps(0,0,'Verifying email…');
       let r;
-      try{r=await authCall({action:'status',email:raw});}catch(e){return fail('Could not reach the server — check your connection and try again ('+String(e&&e.message||e).slice(0,70)+')');}
-      if(!r||!r.ok)return fail('Something went wrong — try again'+(r&&r.error?' ('+r.error+(r.detail?': '+r.detail:'')+')':''));
+      try{r=await authCall({action:'status',email:raw});}catch(e){return fail('Could not reach the server — check your connection and try again');}
+      if(!r||!r.ok)return fail('Something went wrong — try again'+'');
       if(!r.allowed){
         if(r.state==='pending')return fail('Your request is still waiting for approval ⏳',eIn);
         if(r.state==='rejected')return fail('Your request was declined 🚫',eIn);
@@ -1982,7 +1984,7 @@ async function attemptLogin(){
     }
     errEl.textContent=_loginStep==='setup'?'Creating password…':'Signing in…';lgSteps(1,1,'Security check…');
     let r;
-    try{r=await authCall({action:_loginStep,email:raw,password:pass});}catch(e){return fail('Could not reach the server — check your connection and try again ('+String(e&&e.message||e).slice(0,70)+')');}
+    try{r=await authCall({action:_loginStep,email:raw,password:pass});}catch(e){return fail('Could not reach the server — check your connection and try again');}
     if(!r||!r.ok){
       const er=r&&r.error;
       if(er==='bad_password')return fail('Wrong password',pIn);
@@ -3414,7 +3416,7 @@ function simpleHash(s){let h=0;for(let i=0;i<s.length;i++){h=(h<<5)-h+s.charCode
    - The backup sheet must be shared as "Anyone with the link can view". */
 const BACKUP_SHEET_ID='';   /* OFF: the Backup data is old, so it no longer goes into the dashboard. It is searched as an ARCHIVE tab only (see ARCHIVE_EXTRA at the top). To turn the merge back on put '1vpsYtvoZSKLsUeKj-FTXVGJmyFygSSck8DUIODJha_A' here. */
 const BACKUP_SHEET_GID='0';
-function csvEsc(v){v=v==null?'':String(v);return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
+function csvEsc(v){v=v==null?'':String(v);if(/^[=+\-@\t\r]/.test(v)&&isNaN(Number(v)))v="'"+v;return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
 function tableToCSV(t){return t.map(r=>r.map(csvEsc).join(',')).join('\n');}
 function _hk(h){const k=String(h==null?'':h).toLowerCase().replace(/[\s_\-.]+/g,'');return (k==='taskid'||k==='actualid')?'id':k;}   // "Task ID" (Backup) and "ID" (Data Base) are the same column
 const BACKUP_TAB_NAME='Backup Date Base';
@@ -3992,7 +3994,7 @@ function renderLocSection(wrap,locName,rows){
   devSec.innerHTML=`<div class="sec-hd"><span class="sec-t">🖥️ Device Submit Counts</span><span class="sec-m" id="devMeta_${sid(locKey)}">—</span></div><div id="cgrid_${sid(locKey)}" class="cgrid"></div>`;
   wrap.appendChild(devSec);renderCards(locKey,rows);
   const tblSec=document.createElement('div');tblSec.className='sec';
-  tblSec.innerHTML=`<div class="sec-hd"><span class="sec-t">📋 Row Detail</span><span class="sec-m" id="tblMeta_${sid(locKey)}">—</span></div><div class="ttbar"><input class="srch" id="srch_${sid(locKey)}" placeholder="🔍  Search…" oninput="locSrch('${locKey}',this.value)"/><span class="rcnt" id="rc_${sid(locKey)}">0 rows</span></div><div class="tbl-w" id="tbl_${sid(locKey)}"></div><div class="pgbar" id="pg_${sid(locKey)}" style="display:none"></div>`;
+  tblSec.innerHTML=`<div class="sec-hd"><span class="sec-t">📋 Row Detail</span><span class="sec-m" id="tblMeta_${sid(locKey)}">—</span></div><div class="ttbar"><input class="srch" id="srch_${sid(locKey)}" placeholder="🔍  Search…" oninput="locSrch('${jq(locKey)}',this.value)"/><span class="rcnt" id="rc_${sid(locKey)}">0 rows</span></div><div class="tbl-w" id="tbl_${sid(locKey)}"></div><div class="pgbar" id="pg_${sid(locKey)}" style="display:none"></div>`;
   wrap.appendChild(tblSec);renderLocTable(locKey,rows,0);
   const qIdx=hdrs.findIndex(h=>h.toLowerCase()==='queue name');
   const mIdx=hdrs.findIndex(h=>h.toLowerCase()==='modality');
@@ -4219,6 +4221,9 @@ function showToastUndo(msg,actionLabel,actionFn){
   _toastTimer=setTimeout(()=>{t.style.opacity='0';t.style.transform='translateY(10px)';t.style.transition='all .3s';setTimeout(()=>t.remove(),300);},5000);
 }
 function showErr(msg){if(navigator.onLine===false)msg="You're offline — we'll retry as soon as your connection returns";document.getElementById('mainContent').innerHTML=`<div class="errbox" role="alert">⚠️ ${esc(msg)}<div style="margin-top:12px"><button class="btn" onclick="loadData()">↻ Retry</button></div></div>`;document.getElementById('fstrip').innerHTML=`<div style="padding:10px 16px;font-size:.68rem;color:var(--danger)">${esc(msg)}</div>`;document.getElementById('locTabs').innerHTML='';}
+/* SECURITY helpers: jq() = safe for a JS string INSIDE an HTML attribute (onclick="f('${jq(x)}')"); safeUrl() = only http(s) links */
+function jq(s){return String(s??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r?\n/g,' ').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function safeUrl(u){try{const x=new URL(String(u||'').trim(),location.href);return (x.protocol==='https:'||x.protocol==='http:')?x.href:'#';}catch(e){return '#';}}
 function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function shootWebScrollTop(){
   const btn=document.getElementById('scrollTopBtn');
@@ -4994,7 +4999,7 @@ function anBtn(id){
   if(anLog[id])return{t:'✓ Saved',c:'ok'+(anPending[id]?' syncing':''),d:true,tip:anPending[id]?'Saved — syncing to the sheet…':'Saved'};
   return{t:'💾 Save',c:'',d:true,tip:''};
 }
-function anBtnHtml(id){const b=anBtn(id);return `<button class="an-save ${b.c}" data-id="${id}" title="${b.tip}"${b.d?' disabled':''} onclick="anCommit('${id}')">${b.t}</button>`;}
+function anBtnHtml(id){const b=anBtn(id);return `<button class="an-save ${b.c}" data-id="${esc(id)}" title="${b.tip}"${b.d?' disabled':''} onclick="anCommit('${jq(id)}')">${b.t}</button>`;}
 function anMark(id){
   const row=document.querySelector('.an-row[data-id="'+id+'"]');if(!row)return;
   const b=anBtn(id),btn=row.querySelector('.an-save'),inp=row.querySelector('.an-iss');
@@ -5010,7 +5015,7 @@ function anRowRefresh(id){   // re-draw just this row (fast — no full re-rende
 }
 function anRow(t){
   const l=anLog[t.id]||{},v=anCur(t.id),lock=anLocked(t.id),dirty=anIsDirty(t.id),need=anNeedIssue(v),issOn=anIssueOn(v);
-  return `<div class="an-row${dirty?' an-dirty':''}" data-id="${t.id}"><label class="an-sel" title="Select to copy several tasks"><input type="checkbox" class="sel-cb" data-k="an" ${(SEL.kind==='an'&&SEL.map.has(t.id))?'checked ':''}onchange="selToggle('an','${t.id}',this.checked)"></label><div class="an-c1"><a href="${esc(t.link)}" target="_blank" rel="noopener">${t.id} ↗</a><small>${t.ts}</small></div><div class="an-c2"><span${anRepOf('lab',t.lab)?' class="an-bad"':''}><i>Labeler</i>${esc(t.lab)}${anRepBadge('lab',t.lab)}</span><span${anRepOf('qc',t.qc)?' class="an-bad"':''}><i>QTC</i>${esc(t.qc)}${anRepBadge('qc',t.qc)}</span></div><div class="an-c3">${t.type} · ${t.pass}<small>🧩 ${t.obj==null?'—':t.obj.toLocaleString()} objects</small>${l.analyst?`<span class="an-by${anNorm(l.analyst)===anNorm(anMyName())?' me':''}" title="Analyzed by ${esc(l.analyst)}">✔ ${esc(l.analyst)}</span>`:'<small>Not analyzed</small>'}</div><div class="an-rt"><i>Labeler rating</i>${anRateBtns(t.id,'L',v.lr,lock)}</div><div class="an-rt"><i>QTC rating</i>${anRateBtns(t.id,'Q',v.qr,lock)}</div><div class="an-act${issOn?'':' an-noiss'}"><textarea rows="1" class="an-iss${need?' an-need':''}"${issOn?'':' style="display:none"'} data-id="${t.id}" placeholder="${need?'Required — write the problem…':'Write the problem… (Enter to save)'}"${lock?' disabled':''} oninput="anTyping('${t.id}',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();anCommit('${t.id}')}">${esc(v.issue||'')}</textarea>${anBtnHtml(t.id)}<button class="an-copy" type="button" title="Copy link, names, ratings and the problem (without the analyst name)" onclick="anCopy('${t.id}',this)">📋 Copy</button></div></div>`;
+  return `<div class="an-row${dirty?' an-dirty':''}" data-id="${esc(t.id)}"><label class="an-sel" title="Select to copy several tasks"><input type="checkbox" class="sel-cb" data-k="an" ${(SEL.kind==='an'&&SEL.map.has(t.id))?'checked ':''}onchange="selToggle('an','${jq(t.id)}',this.checked)"></label><div class="an-c1"><a href="${esc(safeUrl(t.link))}" target="_blank" rel="noopener noreferrer">${esc(t.id)} ↗</a><small>${t.ts}</small></div><div class="an-c2"><span${anRepOf('lab',t.lab)?' class="an-bad"':''}><i>Labeler</i>${esc(t.lab)}${anRepBadge('lab',t.lab)}</span><span${anRepOf('qc',t.qc)?' class="an-bad"':''}><i>QTC</i>${esc(t.qc)}${anRepBadge('qc',t.qc)}</span></div><div class="an-c3">${esc(t.type)} · ${esc(t.pass)}<small>🧩 ${t.obj==null?'—':t.obj.toLocaleString()} objects</small>${l.analyst?`<span class="an-by${anNorm(l.analyst)===anNorm(anMyName())?' me':''}" title="Analyzed by ${esc(l.analyst)}">✔ ${esc(l.analyst)}</span>`:'<small>Not analyzed</small>'}</div><div class="an-rt"><i>Labeler rating</i>${anRateBtns(t.id,'L',v.lr,lock)}</div><div class="an-rt"><i>QTC rating</i>${anRateBtns(t.id,'Q',v.qr,lock)}</div><div class="an-act${issOn?'':' an-noiss'}"><textarea rows="1" class="an-iss${need?' an-need':''}"${issOn?'':' style="display:none"'} data-id="${esc(t.id)}" placeholder="${need?'Required — write the problem…':'Write the problem… (Enter to save)'}"${lock?' disabled':''} oninput="anTyping('${jq(t.id)}',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();anCommit('${jq(t.id)}')}">${esc(v.issue||'')}</textarea>${anBtnHtml(t.id)}<button class="an-copy" type="button" title="Copy link, names, ratings and the problem (without the analyst name)" onclick="anCopy('${jq(t.id)}',this)">📋 Copy</button></div></div>`;
 }
 function anTyping(id,val){anDraftSet(id,{issue:val});anMark(id);}
 /* auto-grow the Issue box so a long problem is fully visible */
@@ -5312,7 +5317,7 @@ function renderAnalysis(mc){
     const _anOpts=anCount(issBase.filter(t=>!anF.qc.size||anF.qc.has(t.qc)),t=>anLog[t.id].analyst||'—');
     const _qcOpts=anCount(issBase.filter(t=>!anF.analyst.size||anF.analyst.has(anLog[t.id].analyst||'—')),t=>t.qc);
     meta=iss.length+' issues';
-    body=`<div class="an-bar">${anRange()}${anDD('analyst','🧑‍💻 Analyst',_anOpts)}${anDD('qc','🏷 QTC',_qcOpts)}${(anF.analyst.size||anF.qc.size)?'<button class="preset" onclick="anF.analyst.clear();anF.qc.clear();anDone()">✕ Clear filters</button>':''}</div>`+`<div class="tbl-w" style="max-height:620px"><table class="an-t"><tr><th>Task</th><th>Time</th><th>Labeler</th><th>QTC</th><th>Type</th><th>Analyst</th><th>Issue / Problem</th></tr>`+iss.map(t=>`<tr><td><a href="${esc(t.link)}" target="_blank" rel="noopener">${t.id} ↗</a></td><td>${t.ts}</td><td>${esc(t.lab)}</td><td>${esc(t.qc)}</td><td>${t.type}</td><td>${esc(anLog[t.id].analyst||'')}</td><td style="white-space:normal">${esc(anLog[t.id].issue)}</td></tr>`).join('')+'</table></div>';
+    body=`<div class="an-bar">${anRange()}${anDD('analyst','🧑‍💻 Analyst',_anOpts)}${anDD('qc','🏷 QTC',_qcOpts)}${(anF.analyst.size||anF.qc.size)?'<button class="preset" onclick="anF.analyst.clear();anF.qc.clear();anDone()">✕ Clear filters</button>':''}</div>`+`<div class="tbl-w" style="max-height:620px"><table class="an-t"><tr><th>Task</th><th>Time</th><th>Labeler</th><th>QTC</th><th>Type</th><th>Analyst</th><th>Issue / Problem</th></tr>`+iss.map(t=>`<tr><td><a href="${esc(safeUrl(t.link))}" target="_blank" rel="noopener noreferrer">${esc(t.id)} ↗</a></td><td>${t.ts}</td><td>${esc(t.lab)}</td><td>${esc(t.qc)}</td><td>${t.type}</td><td>${esc(anLog[t.id].analyst||'')}</td><td style="white-space:normal">${esc(anLog[t.id].issue)}</td></tr>`).join('')+'</table></div>';
   }
   mc.innerHTML=`<div class="an-wrap"><div id="anSyncBar" class="an-sync" style="display:none"></div><div class="sec" style="overflow:visible!important"><div class="sec-hd"><div class="sec-t">🔎 Analysis</div><div class="sec-m">${meta}</div></div>${anTabs()}${note}${body}</div></div>`;
   const _n=mc.querySelector('.tbl-w');if(_n)_n.scrollTop=_st;window.scrollTo(0,_wy);anUpdSaveAll();anUpdBanner();
