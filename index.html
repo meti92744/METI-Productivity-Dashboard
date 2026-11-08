@@ -2080,7 +2080,8 @@ function initLoginDodge(){
     btn.classList.remove('dodging');
     btn.style.left='';btn.style.top='';btn.style.width='';btn.style.position='';
   }
-  document.addEventListener('mousemove',(e)=>{
+  const _ls=document.getElementById('loginScreen');let _mvR=0,_mvE=null;
+  function _onMove(e){
     if(input.value.trim().length>0){ if(dodging)resetBtn(); return; }
     const btnRect=btn.getBoundingClientRect();
     const cardRect=card.getBoundingClientRect();
@@ -2111,7 +2112,9 @@ function initLoginDodge(){
       btn.style.left=(newLeft-zr.left)+'px';
       btn.style.top=(newTop-zr.top)+'px';
     }
-  });
+  }
+  /* PERF: no-op after login (login screen hidden); otherwise at most one layout read per frame */
+  document.addEventListener('mousemove',(e)=>{if(_ls&&_ls.classList.contains('hidden'))return;_mvE=e;if(_mvR)return;_mvR=requestAnimationFrame(()=>{_mvR=0;_onMove(_mvE);});},{passive:true});
   input.addEventListener('input',()=>{ if(input.value.trim().length>0)resetBtn(); });
 }
 /* ============ END AUTH GATE ============ */
@@ -3600,7 +3603,7 @@ window.addEventListener('online',()=>{try{loadData();}catch(e){}});
 let lastUpdateTs=null;
 function updateRelativeTime(){const el=document.getElementById('lastUpdated');if(!el||!lastUpdateTs)return;const diff=Math.floor((Date.now()-lastUpdateTs)/1000);let txt;if(diff<10)txt='just now';else if(diff<60)txt=diff+'s ago';else if(diff<3600)txt=Math.floor(diff/60)+'m ago';else txt=Math.floor(diff/3600)+'h ago';el.textContent=txt;try{el.title=new Date(lastUpdateTs).toLocaleString();el.style.color=_stale?'var(--danger)':'';}catch(e){}staleRefresh();}
 setInterval(()=>{if(!document.hidden)updateRelativeTime();},10000);
-window.addEventListener('scroll',()=>{const b=document.getElementById('scrollTopBtn');if(!b)return;b.classList.toggle('show',window.scrollY>400);});
+(function(){let b=null,r=0;const upd=()=>{r=0;if(!b||!b.isConnected)b=document.getElementById('scrollTopBtn');if(!b)return;const s=window.scrollY>400;if(b.classList.contains('show')!==s)b.classList.toggle('show',s);};window.addEventListener('scroll',()=>{if(!r)r=requestAnimationFrame(upd);},{passive:true});})();
 function setSyncActive(v){const b=document.getElementById('syncBar');if(b)b.classList.toggle('active',v);}
 function setTrafficLight(state){['tlRed','tlYellow','tlGreen'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('active');});const map={red:'tlRed',yellow:'tlYellow',green:'tlGreen'};const el=document.getElementById(map[state]);if(el)el.classList.add('active');}
 function getMondayStr(d){if(!d||!d.match(/^\d{4}-\d{2}-\d{2}$/))return'';const dt=new Date(d+'T12:00:00');const day=dt.getDay();const diff=day===0?-6:1-day;const mon=new Date(dt);mon.setDate(dt.getDate()+diff);return mon.toISOString().substring(0,10);}
@@ -4719,7 +4722,7 @@ new MutationObserver(function(ms){ms.forEach(function(m){m.addedNodes.forEach(fu
 </script>
 <div id="railNow" aria-live="polite"></div><nav class="rail" id="glassRail"><button data-tip="Home" title="Home" onclick="shootWebScrollTop()" class="on"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></button><div class="rail-sec" id="railSec"></div><i class="rs-i"></i><button data-tip="Refresh" title="Refresh" onclick="loadData()" ><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></button><button id="railAuto" data-tip="Auto refresh" title="Auto refresh" onclick="toggleAutoRefresh()" ><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></button><i></i><button id="railCmp" data-tip="Compare" title="Compare" onclick="toggleCompare()" ><svg viewBox="0 0 24 24"><path d="M12 3v18M5 7h14M5 7l-2 6a3 3 0 0 0 4 0zM19 7l-2 6a3 3 0 0 0 4 0z"/></svg></button><i></i><button data-tip="Dark / Light" title="Dark / Light" onclick="toggleDark()" ><svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button><button id="railLite" class="rail-lite" data-tip="Lite mode (for slow phones)" title="Lite mode" onclick="toggleLite()"><svg viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></button></nav>
 <script id="glass-rail-sync">
-(function(){function pair(src,dst){var a=document.getElementById(src),b=document.getElementById(dst);if(!a||!b)return;function f(){b.classList.toggle('on',a.classList.contains('active'));}f();new MutationObserver(f).observe(a,{attributes:true,attributeFilter:['class']});}
+(function(){var pair=window._pairActive=function(src,dst){var a=document.getElementById(src),b=document.getElementById(dst);if(!a||!b)return;function f(){b.classList.toggle('on',a.classList.contains('active'));}f();new MutationObserver(f).observe(a,{attributes:true,attributeFilter:['class']});};
 pair('arBtn','railAuto');pair('cmpBtn','railCmp');})();
 </script>
 <script id="glass-enter">
@@ -5023,7 +5026,7 @@ function anFit(el){if(!el||el.offsetParent===null)return false;el.style.height='
 function anFitAll(force){document.querySelectorAll('textarea.an-iss'+(force?'':':not([data-fit])')).forEach(el=>{if(anFit(el))el.dataset.fit='1';});}
 document.addEventListener('input',e=>{const t=e.target;if(t&&t.classList&&t.classList.contains('an-iss'))anFit(t);},true);
 (function(){let q=0;const sched=()=>{if(q)return;q=requestAnimationFrame(()=>{q=0;anFitAll(false);});};
-  new MutationObserver(sched).observe(document.body,{childList:true,subtree:true});
+  new MutationObserver(ms=>{for(let i=0;i<ms.length;i++)if(ms[i].addedNodes.length){sched();return;}}).observe(document.body,{childList:true,subtree:true});
   window.addEventListener('resize',()=>{document.querySelectorAll('textarea.an-iss[data-fit]').forEach(e=>delete e.dataset.fit);sched();});})();
 function anRate(id,who,val){
   if(!anAllowed()||anLocked(id))return;
@@ -5350,7 +5353,7 @@ function renderAnalysis(mc){
 <button id="gdAuto" onclick="toggleAutoRefresh()"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Auto</button>
 <button id="gdTheme" title="Tap: dark / light · hold: lite mode" onclick="if(!this._lp)toggleDark();this._lp=0"><svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>Theme</button></nav>
 <script id="gdock-js">
-(function(){function pair(src,dst){var a=document.getElementById(src),b=document.getElementById(dst);if(!a||!b)return;function f(){b.classList.toggle('on',a.classList.contains('active'));}f();new MutationObserver(f).observe(a,{attributes:true,attributeFilter:['class']});}
+(function(){var pair=window._pairActive;
 pair('cmpBtn','gdCmp');pair('arBtn','gdAuto');
 var th=document.getElementById('gdTheme'),lp;th.addEventListener('touchstart',function(){lp=setTimeout(function(){th._lp=1;toggleLite()},700)},{passive:true});
 ['touchend','touchmove','touchcancel'].forEach(function(t){th.addEventListener(t,function(){clearTimeout(lp)},{passive:true})});})();
