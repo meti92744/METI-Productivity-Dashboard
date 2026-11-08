@@ -38,7 +38,7 @@ window.MEEG_CONFIG={
     {id:'1tHRi99llqT1sFIUX4Ns8NNtPZ_PVMLkhy9ogtiAL-kg',tabs:[{name:'Archive 2',gid:0}]},
     {id:'1vpsYtvoZSKLsUeKj-FTXVGJmyFygSSck8DUIODJha_A',tabs:[{name:'Backup Date Base',gid:0}]}   /* the Backup sheet: archive only (it is no longer merged into the dashboard) */
   ],
-  AUTH_API_URL:'https://script.google.com/macros/s/AKfycbxJGBTz3j97tMb9NFT-IhErUubUeuyiGQWifIfLHDtt7d5sWpyHk1irGJuujpxL5dONww/exec',
+  AUTH_API_URL:'https://script.google.com/macros/s/AKfycbxt_jR2iCgrpSUtQLvMf_KVP5-E4nBVtKRQooFn56G5DcVl5S7FJllo8ZCoDcMzUzCHhA/exec',
   REFRESH_INTERVAL:60,      /* seconds between auto data refreshes */
   USERS_WATCH_MS:30000,     /* access re-check */
   QUALITY_POLL_MS:30000,    /* Export tab check */
@@ -1984,7 +1984,7 @@ async function attemptLogin(){
     }
     errEl.textContent=_loginStep==='setup'?'Creating password…':'Signing in…';lgSteps(1,1,'Security check…');
     let r;
-    try{r=await authCall({action:_loginStep,email:raw,password:pass});}catch(e){return fail('Could not reach the server — check your connection and try again');}
+    const _t0=performance.now();try{r=await authCall({action:_loginStep,email:raw,password:pass});}catch(e){return fail('Could not reach the server — check your connection and try again');}console.log('[auth] server login took '+Math.round(performance.now()-_t0)+' ms');
     if(!r||!r.ok){
       const er=r&&r.error;
       if(er==='bad_password')return fail('Wrong password',pIn);
@@ -2004,8 +2004,8 @@ async function attemptLogin(){
     pIn.value='';p2In.value='';errEl.textContent='';
     try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();}catch(e){}
     lgSteps(3,-1,'Access granted');
-    await new Promise(res=>setTimeout(res,window._lite?0:800));
-    try{await loadUsers(true);}catch(e){} // names / roles for the header chip (non-blocking on failure)
+    await new Promise(res=>setTimeout(res,150));
+    loadUsers(true).then(()=>renderUserChip(false)).catch(()=>{}); // names / roles load in the background — no longer blocks login
     document.getElementById('loginScreen').classList.add('hidden');
     startApp();
   }finally{_loginBusy=false;btn.disabled=false;}
@@ -2049,6 +2049,7 @@ function checkAuthOnLoad(){
   }
   document.getElementById('loginScreen').classList.remove('hidden');
   setTimeout(()=>{const i=document.getElementById('loginEmailInput');if(i)i.focus();},80);
+  try{fetch(MEEG_CONFIG.AUTH_API_URL,{mode:'no-cors',cache:'no-store'}).catch(()=>{});}catch(e){} /* warm-up ping: wakes the Apps Script server while the user types */
   return false;
 }
 
