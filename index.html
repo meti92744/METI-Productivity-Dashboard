@@ -5183,8 +5183,9 @@ function anBigAlert(id){
   o.querySelector('.an-big-ok').focus();
 }
 window.addEventListener('beforeunload',ev=>{if(Object.keys(anDraft).some(anIsDirty)||Object.keys(anPending).length){ev.preventDefault();ev.returnValue='';}});
-function anSet(k,v){anLimit=300;anF[k]=v;renderAnalysis(document.getElementById('mainContent'));}
-function anSetView(v){anLimit=300;anView=v;renderAnalysis(document.getElementById('mainContent'));}
+let _anFresh=false;   /* true = the next render is a NEW result set (filter / view change) → list starts at the top; false = background refresh / Load more → keep the reading position */
+function anSet(k,v){anLimit=300;_anFresh=true;anF[k]=v;renderAnalysis(document.getElementById('mainContent'));}
+function anSetView(v){anLimit=300;_anFresh=true;anView=v;renderAnalysis(document.getElementById('mainContent'));}
 function anOpts(arr,sel,all){return `<option value="">${all}</option>`+arr.map(x=>`<option${x===sel?' selected':''}>${esc(x)}</option>`).join('');}
 function anFiltered(all){
   return all.filter(t=>{const l=anLog[t.id];
@@ -5219,7 +5220,7 @@ function anPick(k,el,single){const v=el.dataset.v;
   const S=anF[k];S.has(v)?S.delete(v):S.add(v);el.classList.toggle('on',S.has(v));el.querySelector('.dp-cb').textContent=S.has(v)?'✓':'';anDirty=true;}
 function anSrch(k,q){q=q.toLowerCase();document.querySelectorAll('#andp_'+k+' .dp-item').forEach(x=>x.style.display=x.dataset.v.toLowerCase().includes(q)?'':'none');}
 function anClear(k,single){if(single)anF[k]='';else anF[k].clear();anDone();}
-function anDone(){anLimit=300;anOpen='';anDirty=false;renderAnalysis(document.getElementById('mainContent'));}
+function anDone(){anLimit=300;_anFresh=true;anOpen='';anDirty=false;renderAnalysis(document.getElementById('mainContent'));}
 document.addEventListener('click',e=>{if(anOpen&&!(e.target.closest&&e.target.closest('.an-fg'))){if(anDirty)anDone();else{anOpen='';document.querySelectorAll('.an-fg .dpanel').forEach(p=>p.classList.remove('open'));}}});
 
 function anChart(rated){
@@ -5279,6 +5280,9 @@ function renderAnalysis(mc){
   const all=anTasks();anAllCache=all;anRepC=null;const tasks=anFiltered(all);let body='',meta='';
   const note=ANALYSIS_API_URL?'':'<div class="an-note">⚠ ANALYSIS_API_URL is empty — ratings are saved in this browser only. Deploy analysis_script.gs and paste its URL to share them.</div>';
   const _sc=mc.querySelector('.tbl-w'),_st=_sc?_sc.scrollTop:0,_wy=window.scrollY;
+  const _fresh=_anFresh;_anFresh=false;
+  const _al=_fresh?null:mc.querySelector('.an-list'),_alSt=_al?_al.scrollTop:0;let _anc=null;
+  if(_al&&_alSt>0){const lt=_al.getBoundingClientRect().top;for(const r of _al.children){const b=r.getBoundingClientRect();if(b.bottom>lt){_anc={id:r.dataset.id,off:b.top-lt};break;}}}
   if(anView==='tasks'){
     const labs=[...new Set(all.map(t=>t.lab))].sort(),qcs=[...new Set(all.map(t=>t.qc))].sort(),shown=tasks.sort((a,b)=>b.time-a.time).slice(0,anLimit);meta=tasks.length+' tasks';
     body=`<div class="an-bar">${anRange()}${anDD('lab','👤 Labeler',anCount(all,t=>t.lab))}${anDD('qc','🏷 QTC',anCount(all,t=>t.qc))}${anDD('type','Type',anCount(all,t=>t.type))}${anDD('pass','✅ Pass',anCount(all,t=>t.pass))}${anDD('status','Status',['Not analyzed','Analyzed','Has issue'].map(v=>({v})),true)}<input placeholder="Task id / name…" value="${esc(anF.q)}" onchange="anSet('q',this.value)"><button class="preset${anF.mine?' on':''}" onclick="anSet('mine',!anF.mine)">👤 My tasks</button><button id="anSaveAll" class="an-saveall" title="Save all (Ctrl+S)" type="button" disabled onclick="anSaveAll()">💾 Save all</button></div>
@@ -5325,6 +5329,8 @@ function renderAnalysis(mc){
   }
   mc.innerHTML=`<div class="an-wrap"><div id="anSyncBar" class="an-sync" style="display:none"></div><div class="sec" style="overflow:visible!important"><div class="sec-hd"><div class="sec-t">🔎 Analysis</div><div class="sec-m">${meta}</div></div>${anTabs()}${note}${body}</div></div>`;
   const _n=mc.querySelector('.tbl-w');if(_n)_n.scrollTop=_st;window.scrollTo(0,_wy);anUpdSaveAll();anUpdBanner();
+  const _nl=_alSt>0?mc.querySelector('.an-list'):null;
+  if(_nl){_nl.scrollTop=_alSt;const fix=()=>{if(!_anc||!_nl.isConnected)return;const e=Array.prototype.find.call(_nl.children,x=>x.dataset.id===_anc.id);if(e)_nl.scrollTop+=e.getBoundingClientRect().top-_nl.getBoundingClientRect().top-_anc.off;};fix();requestAnimationFrame(()=>requestAnimationFrame(fix));}
 }
 </script>
 
