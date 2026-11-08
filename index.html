@@ -4979,7 +4979,7 @@ function anScore(cnt){const n=RATES.reduce((s,k)=>s+(cnt[k]||0),0);return n?RATE
 function anLoadLog(cb){
   fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&headers=1&sheet=${encodeURIComponent(ANALYSIS_LOG_SHEET)}&_=${Date.now()}`,{cache:'no-store'})
    .then(r=>r.ok?r.text():Promise.reject()).then(t=>{const rows=parseCSV(t);if(rows.length&&!/task id/i.test(rows[0].join(',')))throw 0;anLog={};anLogRows=[];if(rows.length>1){const h=rows[0].map(x=>x.trim().toLowerCase());
-     const ix=n=>h.indexOf(n);rows.slice(1).forEach(r=>{const id=String(r[ix('task id')]||'').trim();if(id){const _e={analyst:r[ix('analyst')]||'',lr:r[ix('labeler rating')]||'',qr:r[ix('qc rating')]||'',issue:String(r[ix('issue')]||'').trim(),date:r[ix('analysis date')]||''};anLog[id]=_e;anLogRows.push(Object.assign({id},_e));}});}
+     const ix=n=>h.indexOf(n);const _tsI=h.indexOf('timestamp')>=0?h.indexOf('timestamp'):(h[0]&&!/task id|analyst|analysis date|rating|issue/.test(h[0])?0:-1);rows.slice(1).forEach(r=>{const id=String(r[ix('task id')]||'').trim();if(id){const _e={analyst:r[ix('analyst')]||'',lr:r[ix('labeler rating')]||'',qr:r[ix('qc rating')]||'',issue:String(r[ix('issue')]||'').trim(),date:r[ix('analysis date')]||'',ts:_tsI>=0?(r[_tsI]||''):''};anLog[id]=_e;anLogRows.push(Object.assign({id},_e));}});}
      anLogRows=anDedupeRows(anLogRows);try{localStorage.setItem('an_log',JSON.stringify(anLog));}catch(_){}anFinishLoad(cb);}).catch(()=>{
      const local=()=>{try{anLog=JSON.parse(localStorage.getItem('an_log')||'{}');}catch(_){anLog={};}anLogRows=[];anFinishLoad(cb);};
      if(!ANALYSIS_API_URL)return local();
@@ -5087,8 +5087,8 @@ function anCommit(id){
   const v=anCur(id);
   if(!anIssueOn(v))v.issue='';
   if(anNeedIssue(v)){anBigAlert(id);return;}
-  const e={id:id,lr:v.lr||'',qr:v.qr||'',issue:String(v.issue||'').trim(),analyst:(anLog[id]&&anLog[id].analyst&&anIsSV()?anLog[id].analyst:ANALYSIS_USERS[anMe()][0]),date:anYmd(new Date()),rid:anNewRid()};
-  anLog[id]={analyst:e.analyst,lr:e.lr,qr:e.qr,issue:e.issue,date:e.date};   // instant: it is "Saved" right now
+  const e={id:id,lr:v.lr||'',qr:v.qr||'',issue:String(v.issue||'').trim(),analyst:(anLog[id]&&anLog[id].analyst&&anIsSV()?anLog[id].analyst:ANALYSIS_USERS[anMe()][0]),date:((anLog[id]&&(extractDate(anLog[id].ts)||extractDate(anLog[id].date)))||anYmd(new Date())),ts:(anLog[id]&&anLog[id].ts)||'',rid:anNewRid()};   // editing a rating keeps the ORIGINAL day; today only for a first-time save
+  anLog[id]={analyst:e.analyst,lr:e.lr,qr:e.qr,issue:e.issue,date:e.date,ts:e.ts||''};   // instant: it is "Saved" right now
   anMineAdd(id);anRepC=null;
   delete anDraft[id];anFailed.delete(id);
   anPending[id]=e;anPendSave();anRecent[id]={e:anLog[id],ts:Date.now()};
@@ -5123,7 +5123,7 @@ async function anFlushRun(){   // background upload queue
 }
 /* re-read the sheet (so a row deleted from the sheet goes back to "not rated"), keeping anything not uploaded yet */
 function anFinishLoad(cb){
-  Object.keys(anPending).forEach(id=>{const e=anPending[id];anLog[id]={analyst:e.analyst,lr:e.lr,qr:e.qr,issue:e.issue,date:e.date};});
+  Object.keys(anPending).forEach(id=>{const e=anPending[id];anLog[id]={analyst:e.analyst,lr:e.lr,qr:e.qr,issue:e.issue,date:e.date,ts:e.ts||''};});
   const now=Date.now();
   Object.keys(anRecent).forEach(id=>{const r=anRecent[id],x=anLog[id];
     if(x&&['lr','qr','issue'].every(k=>String(x[k]||'')===String(r.e[k]||''))){delete anRecent[id];return;}   // the sheet shows it now → from here on the SHEET decides (delete the row there → it goes back to "not rated")
@@ -5310,7 +5310,7 @@ function renderAnalysis(mc){
     const _rows=anLogRows.slice(),_seen=new Set(anLogRows.map(r=>r.id));Object.keys(anLog).forEach(id=>{if(!_seen.has(id))_rows.push(Object.assign({id},anLog[id]));});   // + anything just saved that the sheet read hasn't returned yet
     _rows.forEach(l=>{const id=l.id,t=tById[id];
       if(t?!okIds.has(id):tf)return;
-      const d=String(extractDate(l.date)||(t&&t.day)||'').trim();
+      const d=String(extractDate(l.ts)||extractDate(l.date)||(t&&t.day)||'').trim();   // first-save day (column A) wins: re-saving/editing an old task must not move it to today
       if(anF.from&&d<anF.from)return;if(anF.to&&d>anF.to)return;
       const a=l.analyst||'—';per[a]=per[a]||{Lidar:0,'Lane Line':0,issues:0,total:0};
       if(t)per[a][t.type]++;else orphan++;
