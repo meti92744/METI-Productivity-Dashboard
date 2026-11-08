@@ -5155,6 +5155,7 @@ function anCopyText(id){
   {const sh=t.shiftRaw||({M:'Morning',N:'Night',ON:'Overnight'}[t.shift]||'');if(sh)L.push('Shift: '+sh);}
   if(t.type)L.push('Type: '+t.type);
   if(t.pass)L.push('Pass: '+t.pass);
+  if(t.obj!=null)L.push('Objects: '+t.obj.toLocaleString('en-US'));
   if(t.link)L.push('Link: '+t.link);
   L.push('Labeler: '+t.lab+(v.lr?' — '+v.lr:''));
   L.push('QTC: '+t.qc+(v.qr?' — '+v.qr:''));
