@@ -1360,6 +1360,17 @@ html body #loginScreen .lg-btn.dodging{position:absolute;width:150px;z-index:5;b
 html.lite .lg-dots,html.lite .lg-arc,html.lite .lg-core{animation:none!important}
 @media(prefers-reduced-motion:reduce){.lg-dots,.lg-arc,.lg-core,.lg-field{animation:none!important}}
 </style>
+<style id="qpt-css">
+.qpt{background:var(--card);border-radius:14px;padding:12px 14px;margin:10px 0}
+.qpt-t{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.qpt-t b{font-family:var(--mono);font-size:.9rem}
+.qpt-t span{padding:2px 10px;border-radius:99px;font-weight:700;font-family:var(--mono);font-size:.78rem}
+.qpt-r{display:flex;justify-content:space-between;gap:12px;padding:5px 0;font-size:.78rem;border-top:1px solid var(--border-light)}
+.qpt-r span{color:var(--muted)}.qpt-r em{font-style:normal;text-align:right;word-break:break-word}
+.qpt-r a{color:var(--primary);font-weight:700;text-decoration:none}
+.qpt-hint{font-weight:400;font-size:.7rem;color:var(--muted)}
+.pn{overflow-y:auto}
+</style>
 </head>
 <body>
 <div class="arcs-ov" id="arcsOv" onclick="if(event.target===this)closeArchiveSearch()"><div class="arcs-box">
@@ -2911,6 +2922,9 @@ function fetchQualityData(silent){
     const aemailIdx=(()=>{let i=qhLower.findIndex(h=>h==='actual email');if(i<0)i=qhLower.findIndex(h=>h==='yubikey email');return i;})();
     const metricIdx={artifacts:qhLower.findIndex(h=>h==='artifacts'),attribute:qhLower.findIndex(h=>h==='attribute'),tvaF1:qhLower.findIndex(h=>h==='tva f1'),totalAccuracy:qhLower.findIndex(h=>h==='total accuracy')};
     if(aidIdx<0){showToast('⚠️ "Actual ID" column not found in the Export tab');return;}
+    const gulpIdx=(()=>{let i=qhLower.findIndex(h=>h==='gulp diff url');if(i<0)i=qhLower.findIndex(h=>h.indexOf('gulp')>=0&&h.indexOf('url')>=0);if(i<0)i=qhLower.findIndex(h=>h.indexOf('gulp')>=0);return i;})();
+    const actDateIdx=qhLower.findIndex(h=>h==='actual date');
+    const expDateIdx=qhLower.findIndex(h=>h==='expected date');
     const newWeek=qIsNewWeek(table,aidIdx,adateIdx,qualityStore);
     if(newWeek)qualityStore={};   // newer week in Export -> start clean, exactly like pressing Reset (New Week)
     const now=Date.now();let added=0;
@@ -2922,6 +2936,9 @@ function fetchQualityData(silent){
       // if the date can't be parsed, leave it blank rather than storing a raw string that breaks the week label later
       rec.actualDate=adateIdx>=0&&row[adateIdx]!==undefined?(extractDate(row[adateIdx])||''):'';
       rec.email=aemailIdx>=0&&row[aemailIdx]!==undefined?String(row[aemailIdx]).trim():'';
+      rec.gulpUrl=gulpIdx>=0&&row[gulpIdx]!==undefined?String(row[gulpIdx]).trim():'';
+      rec.actDate=actDateIdx>=0&&row[actDateIdx]!==undefined?String(row[actDateIdx]).trim():'';
+      rec.expDate=expDateIdx>=0&&row[expDateIdx]!==undefined?String(row[expDateIdx]).trim():'';
       qualityStore[aid]=rec;added++;
     }
     saveQualityStore();
@@ -3191,9 +3208,9 @@ function renderQualitySection(mc){
       const pk=Object.keys(buckets[grp]).find(k=>buckets[grp][k].display===p.display&&buckets[grp][k].email===p.email&&buckets[grp][k].count===p.count)||'';
       const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':`<span style="color:var(--muted);font-family:var(--mono);font-size:.55rem">#${i+1}</span>`;
       const tier=accTier(p.accAvg);
-      return `<tr class="qp-row" data-grp="${esc(grp)}" data-key="${esc(pk)}" onclick="toggleQualityPerson(this)" title="Click to see this labeler's quality tasks" style="border-bottom:1px solid var(--border-light);cursor:pointer">
+      return `<tr class="qp-row" data-grp="${esc(grp)}" data-key="${esc(pk)}" onclick="window.openQualityPerson&&openQualityPerson(this)" title="Click to see this labeler's quality tasks" style="border-bottom:1px solid var(--border-light);cursor:pointer">
         <td style="padding:6px 10px;font-size:.62rem;white-space:nowrap">${medal}</td>
-        <td style="padding:6px 10px;font-size:.66rem;color:var(--text);font-weight:700;white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis"><span style="color:var(--primary)">▸</span> ${esc(p.display)}</td>
+        <td style="padding:6px 10px;font-size:.66rem;color:var(--text);font-weight:700;white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis">${esc(p.display)}</td>
         <td style="padding:6px 10px;font-size:.58rem;color:var(--text-soft);white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis">${p.email?esc(p.email):'—'}</td>
         <td style="padding:6px 10px;text-align:center;font-size:.64rem;font-family:var(--mono);font-weight:700">${p.count}</td>
         <td style="padding:6px 10px;text-align:center;font-size:.62rem;font-family:var(--mono);color:var(--text-soft)">${qFmt(avgOf(p,'artifacts'))}</td>
@@ -3385,33 +3402,7 @@ function fallbackCopy(text,done){
 function qLinkBtn(link){
   if(!link)return '<span style="color:var(--muted);font-size:.55rem">no link</span>';
   const href=/^https?:\/\//i.test(link)?link:'';
-  return href?`<a href="${esc(href)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--primary);font-weight:700;font-size:.6rem;text-decoration:none;white-space:nowrap">🔗 Open task</a>`:`<span style="font-size:.55rem;color:var(--text-soft)">${esc(link)}</span>`;
-}
-function toggleQualityPerson(tr){
-  const nx=tr.nextElementSibling;
-  const arrow=tr.querySelector('td:nth-child(2) span');
-  if(nx&&nx.classList.contains('qp-det')){nx.remove();if(arrow)arrow.textContent='▸';return;}
-  const b=((window._qBuckets||{})[tr.dataset.grp]||{})[tr.dataset.key];
-  if(!b)return;
-  const col=SHIFT_GROUP_COLORS[tr.dataset.grp]||'var(--primary)';
-  const tasks=(b.tasks||[]).slice().sort((x,y)=>{const a=qNum(x.q.totalAccuracy),c=qNum(y.q.totalAccuracy);return (a===null?101:a)-(c===null?101:c);});
-  const th='padding:5px 8px;font-size:.5rem;font-weight:700;color:var(--text-soft);text-align:left;border-bottom:1px solid var(--border)';
-  const td='padding:5px 8px;font-size:.6rem;border-bottom:1px solid var(--border-light)';
-  const rows=tasks.map(t=>{const tier=accTier(qNum(t.q.totalAccuracy));return `<tr>
-    <td style="${td};font-family:var(--mono);font-weight:700">${esc(t.aid)}</td>
-    <td style="${td}">${t.qtc?esc(t.qtc):'—'}</td>
-    <td style="${td};text-align:center;font-family:var(--mono)">${qFmt(qNum(t.q.artifacts))}</td>
-    <td style="${td};text-align:center;font-family:var(--mono)">${qFmt(qNum(t.q.attribute))}</td>
-    <td style="${td};text-align:center;font-family:var(--mono)">${qFmt(qNum(t.q.tvaF1))}</td>
-    <td style="${td};text-align:center"><span style="padding:2px 8px;border-radius:8px;font-weight:800;font-family:var(--mono);color:${tier.c};background:${tier.bg};border:1px solid ${tier.bd}">${qFmt(qNum(t.q.totalAccuracy))}</span></td>
-    <td style="${td}">${qLinkBtn(t.link)}</td></tr>`;}).join('');
-  const det=document.createElement('tr');det.className='qp-det';
-  det.innerHTML=`<td colspan="8" style="padding:0"><div style="margin:6px 10px 12px;padding:10px 12px;border:1px solid ${col}55;border-left:3px solid ${col};border-radius:10px;background:${col}0d" onclick="event.stopPropagation()">
-    <div style="font-size:.66rem;font-weight:800;margin-bottom:6px">📋 ${esc(b.display)}${b.email?` <span style="font-weight:500;color:var(--text-soft)">· ${esc(b.email)}</span>`:''} — ${tasks.length} task(s) with quality <span style="font-weight:500;color:var(--muted);font-size:.55rem">(lowest accuracy first)</span></div>
-    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr>
-      <th style="${th}">Task ID</th><th style="${th}">Sent to (QTC)</th><th style="${th};text-align:center">Artifacts</th><th style="${th};text-align:center">Attribute</th><th style="${th};text-align:center">TVA F1</th><th style="${th};text-align:center">Total</th><th style="${th}">Link</th>
-    </tr></thead><tbody>${rows}</tbody></table></div></div></td>`;
-  tr.after(det);if(arrow)arrow.textContent='▾';
+  return href?`<a href="${esc(href)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--primary);font-weight:700;font-size:.6rem;text-decoration:none;white-space:nowrap">🔗 GULP Diff</a>`:`<span style="font-size:.55rem;color:var(--text-soft)">${esc(link)}</span>`;
 }
 function filterQualityById(val){
   const q=(val||'').trim().toLowerCase();
@@ -3437,7 +3428,7 @@ function filterQualityById(val){
     const person=info?info.name:null;
     const email=(info&&info.email)||qd.email||'';
     const qtc=info?info.qtc:'';
-    const link=info?info.link:'';
+    const link=qd.gulpUrl||(info?info.link:'');
     const col=grp?SHIFT_GROUP_COLORS[grp]:'var(--danger)';
     return `<div class="dcard" style="cursor:var(--cur-arrow,default);border-color:${col}55;background:${col}0d">
       <div class="dc-top"><span class="dc-pc" style="color:${col}">🆔 ${esc(aid)}</span></div>
@@ -3445,6 +3436,8 @@ function filterQualityById(val){
       <div class="dc-meta"><span class="dc-mi">🧩</span><span class="dc-mt">Artifacts: ${qFmt(qNum(qd.artifacts))}</span></div>
       <div class="dc-meta"><span class="dc-mi">🏷️</span><span class="dc-mt">Attribute: ${qFmt(qNum(qd.attribute))}</span></div>
       <div class="dc-meta"><span class="dc-mi">📐</span><span class="dc-mt">TVA F1: ${qFmt(qNum(qd.tvaF1))}</span></div>
+      ${qd.actDate?`<div class="dc-meta"><span class="dc-mi">📅</span><span class="dc-mt">Actual: ${esc(qd.actDate)}</span></div>`:''}
+      ${qd.expDate?`<div class="dc-meta"><span class="dc-mi">📅</span><span class="dc-mt">Expected: ${esc(qd.expDate)}</span></div>`:''}
       ${link?`<div class="dc-meta"><span class="dc-mi">🔗</span><span class="dc-mt">${qLinkBtn(link)}</span></div>`:''}
       <div class="dc-qs"><span class="qtag" style="background:${col}22;color:${col};border-color:${col}55;font-weight:800">🎯 Total: ${qFmt(qNum(qd.totalAccuracy))}</span></div>
     </div>`;
@@ -4658,6 +4651,30 @@ const it=[[H[3]||'Artifacts',r.art],[H[4]||'Attribute',r.att],[H[5]||'Accuracy',
 G('pnBars').innerHTML='<div class="pn-h">Quality</div>'+it.map(([k,v])=>'<div class="pn-bar"><span title="'+esc(k)+'">'+esc(k)+'</span><div><i data-w="'+Math.max(4,Math.min(100,qPct(v)||0))+'" style="background:'+accTier(v).c+'"></i></div><em>'+qFmt(v)+'</em></div>').join('');
 if(pch){pch.destroy();pch=null}pbuild=null;pOpen=true;G('pn').classList.add('on');G('pnScrim').classList.add('on');
 setTimeout(()=>G('pnBars').querySelectorAll('i').forEach(e=>e.style.width=e.dataset.w+'%'),140);G('pnX').focus({preventScroll:true})}
+/* ---- panel for a labeler row in the Quality shift cards: quality tasks, who they were sent to, dates, GULP Diff URL ---- */
+window.openQualityPerson=function(tr){
+ const b=((window._qBuckets||{})[tr.dataset.grp]||{})[tr.dataset.key];if(!b)return;
+ const grp=tr.dataset.grp,P=PAL[th()],cols=[P.blue,P.teal,P.indigo,P.orange,P.green],name=b.display||'';
+ let hsh=0;for(const ch of name)hsh=(hsh*31+ch.charCodeAt(0))>>>0;
+ const tasks=(b.tasks||[]).slice().sort((x,y)=>{const a=qNum(x.q.totalAccuracy),c=qNum(y.q.totalAccuracy);return(a===null?101:a)-(c===null?101:c)});
+ const avg=m=>b.cnt[m]?b.sum[m]/b.cnt[m]:null;
+ G('pnAv').textContent=name.split(/\s+/).slice(0,2).map(x=>x[0]||'').join('').toUpperCase();G('pnAv').style.background=cols[hsh%5];
+ G('pnName').textContent=name;G('pnSub').textContent='Labeler \u00b7 '+(grp==='Empty'?'Empty':grp+' Shift')+(b.email?' \u00b7 '+b.email:'');
+ G('pnV').textContent=tasks.length;G('pnVl').textContent='Tasks';G('pnD').textContent=qFmt(avg('totalAccuracy'));G('pnDl').textContent='Total Accuracy';
+ document.querySelector('#pn .pn-card').style.display='none';
+ const mets=[['Artifacts',avg('artifacts')],['Attribute',avg('attribute')],['TVA F1',avg('tvaF1')],['Total Accuracy',avg('totalAccuracy')]].filter(x=>x[1]!==null);
+ const bars='<div class="pn-h">Quality</div>'+mets.map(([k,v])=>'<div class="pn-bar"><span title="'+esc(k)+'">'+esc(k)+'</span><div><i data-w="'+Math.max(4,Math.min(100,qPct(v)||0))+'" style="background:'+accTier(v).c+'"></i></div><em>'+qFmt(v)+'</em></div>').join('');
+ const row=(k,v)=>v?'<div class="qpt-r"><span>'+k+'</span><em>'+v+'</em></div>':'';
+ const list='<div class="pn-h">Tasks with quality ('+tasks.length+') <span class="qpt-hint">lowest first</span></div>'+tasks.map(t=>{
+  const tier=accTier(qNum(t.q.totalAccuracy)),url=String(t.q.gulpUrl||t.link||'').trim(),ok=/^https?:\/\//i.test(url);
+  return '<div class="qpt"><div class="qpt-t"><b>'+esc(t.aid)+'</b><span style="color:'+tier.c+';background:'+tier.bg+';border:1px solid '+tier.bd+'">'+qFmt(qNum(t.q.totalAccuracy))+'</span></div>'
+  +row('Sent to (QTC)',t.qtc?esc(t.qtc):'')+row('Actual Date',esc(t.q.actDate||''))+row('Expected Date',esc(t.q.expDate||''))
+  +'<div class="qpt-r"><span>Artifacts \u00b7 Attr \u00b7 TVA</span><em>'+qFmt(qNum(t.q.artifacts))+' \u00b7 '+qFmt(qNum(t.q.attribute))+' \u00b7 '+qFmt(qNum(t.q.tvaF1))+'</em></div>'
+  +'<div class="qpt-r"><span>GULP Diff URL</span>'+(ok?'<a href="'+esc(url)+'" target="_blank" rel="noopener">Open \u2197</a>':'<em style="color:var(--muted)">'+(url?esc(url):'no link')+'</em>')+'</div></div>';}).join('');
+ G('pnBars').innerHTML=bars+list;
+ if(pch){pch.destroy();pch=null}pbuild=null;pOpen=true;G('pn').classList.add('on');G('pnScrim').classList.add('on');
+ setTimeout(()=>G('pnBars').querySelectorAll('i').forEach(e=>e.style.width=e.dataset.w+'%'),140);G('pnX').focus({preventScroll:true});
+};
 document.addEventListener('click',e=>{if(e.target.closest('a'))return;
  const qt=e.target.closest('#teamSheetBody tbody tr');if(qt){openQ(qt);return}
  const sec=e.target.closest('.sec');if(!sec||!sec._pctx)return;
