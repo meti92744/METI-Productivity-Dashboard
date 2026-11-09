@@ -5260,9 +5260,12 @@ let _anFresh=false;   /* true = the next render is a NEW result set (filter / vi
 function anSet(k,v){anLimit=300;_anFresh=true;anF[k]=v;renderAnalysis(document.getElementById('mainContent'));}
 function anSetView(v){anLimit=300;_anFresh=true;anView=v;renderAnalysis(document.getElementById('mainContent'));}
 function anOpts(arr,sel,all){return `<option value="">${all}</option>`+arr.map(x=>`<option${x===sel?' selected':''}>${esc(x)}</option>`).join('');}
+/* Ratings view: the date range and the daily trend use the ANALYSIS DATE (when the task was rated), not the task's own date */
+function anADay(t){const l=anLog[t.id];return (l&&(extractDate(l.date)||extractDate(l.ts)))||t.day||'';}
 function anFiltered(all){
   return all.filter(t=>{const l=anLog[t.id];
-    if(anF.from&&t.day<anF.from)return false;if(anF.to&&t.day>anF.to)return false;
+    const _d=anView==='ratings'?anADay(t):t.day;
+    if(anF.from&&_d<anF.from)return false;if(anF.to&&_d>anF.to)return false;
     if(anF.lab.size&&!anF.lab.has(t.lab))return false;if(anF.qc.size&&!anF.qc.has(t.qc))return false;
     if(anF.type.size&&!anF.type.has(t.type))return false;if(anF.shift&&t.shift!==anF.shift)return false;if(anF.mine&&!anIsMine(t.id))return false;if(anF.pass.size&&!anF.pass.has(t.pass))return false;
     if(anF.q&&!(t.id.includes(anF.q)||t.lab.toLowerCase().includes(anF.q.toLowerCase())))return false;
@@ -5298,7 +5301,7 @@ document.addEventListener('click',e=>{if(anOpen&&!(e.target.closest&&e.target.cl
 
 function anChart(rated){
   const key=t=>anGroup==='QC'?t.qc:t.lab,rate=t=>anGroup==='QC'?anLog[t.id].qr:anLog[t.id].lr,by={},tot={},ds=new Set();
-  rated.forEach(t=>{const r=rate(t),n=key(t);if(!r||!t.day||!n)return;ds.add(t.day);by[n]=by[n]||{};by[n][t.day]=by[n][t.day]||{};by[n][t.day][r]=(by[n][t.day][r]||0)+1;tot[n]=(tot[n]||0)+1;});
+  rated.forEach(t=>{const r=rate(t),n=key(t),dy=anADay(t);if(!r||!dy||!n)return;ds.add(dy);by[n]=by[n]||{};by[n][dy]=by[n][dy]||{};by[n][dy][r]=(by[n][dy][r]||0)+1;tot[n]=(tot[n]||0)+1;});
   const days=[...ds].sort(),names=Object.keys(by).sort((a,b)=>tot[b]-tot[a]),show=anF.chart&&by[anF.chart]?[anF.chart]:names.slice(0,5);
   const sel=`<div class="an-bar">${anDD('chart',(anGroup==='QC'?'QTC':'Labeler')+(anF.chart?'':' · Top 5'),names.map(n=>({v:n,n:tot[n]})),true)}</div>`;
   if(!days.length)return `<div class="sec" style="margin-top:12px"><div class="sec-hd"><div class="sec-t">📊 Score trend</div></div><div class="an-note">No rated tasks in this range.</div></div>`;
@@ -5308,7 +5311,7 @@ function anChart(rated){
   show.forEach((n,k)=>{const pts=days.map((d,i)=>by[n][d]?[x(i),y(anScore(by[n][d]))]:null).filter(Boolean);
     g+=`<polyline fill="none" stroke="${col[k%5]}" stroke-width="2.4" stroke-linejoin="round" points="${pts.map(q=>q.join(',')).join(' ')}"/>`+pts.map(q=>`<circle cx="${q[0]}" cy="${q[1]}" r="3.4" fill="${col[k%5]}"/>`).join('');});
   const leg=show.map((n,k)=>`<span style="display:inline-flex;align-items:center;gap:6px;margin-right:16px;font-size:.78rem;color:var(--text)"><i style="width:10px;height:10px;border-radius:50%;background:${col[k%5]}"></i>${esc(n)}</span>`).join('');
-  return `<div class="sec" style="margin-top:12px;overflow:visible!important"><div class="sec-hd"><div class="sec-t">📊 Score trend</div><div class="sec-m">daily Score % · Lidar + Lane Line</div></div>${sel}<div style="padding:0 24px 8px">${leg}</div><div style="padding:0 16px 18px;overflow-x:auto"><svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:560px;height:auto">${g}</svg></div></div>`;
+  return `<div class="sec" style="margin-top:12px;overflow:visible!important"><div class="sec-hd"><div class="sec-t">📊 Score trend</div><div class="sec-m">daily Score % by Analysis Date · Lidar + Lane Line</div></div>${sel}<div style="padding:0 24px 8px">${leg}</div><div style="padding:0 16px 18px;overflow-x:auto"><svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:560px;height:auto">${g}</svg></div></div>`;
 }
 async function anShot(btn){
   const src=document.getElementById('anRatingsBox');if(!src){showToast('⚠️ Nothing to capture');return;}
@@ -5363,7 +5366,7 @@ function renderAnalysis(mc){
       shown.map(anRow).join('')+'</div>'+(tasks.length>anLimit?'<button class="an-more" type="button" onclick="anMore()">Load more ('+(tasks.length-anLimit)+' left)</button>':'');
   }else if(anView==='ratings'){
     const rated=tasks.filter(t=>anLog[t.id]&&(anLog[t.id].lr||anLog[t.id].qr));meta=rated.length+' rated tasks';
-    body=anDateBar()+`<div class="an-bar"><label>Group by</label><button class="preset${anGroup==='QC'?' on':''}" onclick="anGroup='QC';anSetView('ratings')">QTC</button><button class="preset${anGroup==='Labeler'?' on':''}" onclick="anGroup='Labeler';anSetView('ratings')">Labeler</button><label>Shift</label>${['','M','N','ON'].map(v=>`<button class="preset${anF.shift===v?' on':''}" onclick="anSet('shift','${v}')">${v||'All'}</button>`).join('')}<button class="btn" onclick="anShot(this)">📸 Screenshot</button></div>`;
+    body=anDateBar()+`<div class="an-note" style="padding:0 16px 6px">📅 Rates are counted by <b>Analysis Date</b> (the day the task was rated)</div><div class="an-bar"><label>Group by</label><button class="preset${anGroup==='QC'?' on':''}" onclick="anGroup='QC';anSetView('ratings')">QTC</button><button class="preset${anGroup==='Labeler'?' on':''}" onclick="anGroup='Labeler';anSetView('ratings')">Labeler</button><label>Shift</label>${['','M','N','ON'].map(v=>`<button class="preset${anF.shift===v?' on':''}" onclick="anSet('shift','${v}')">${v||'All'}</button>`).join('')}<button class="btn" onclick="anShot(this)">📸 Screenshot</button></div>`;
     body+='<div id="anRatingsBox">'+anLegend();['Lidar','Lane Line'].forEach(type=>{const rows=rated.filter(t=>t.type===type),g={};
       rows.forEach(t=>{const nm=anGroup==='QC'?t.qc:t.lab,rt=anGroup==='QC'?anLog[t.id].qr:anLog[t.id].lr;if(!rt)return;(g[nm]=g[nm]||{})[rt]=(g[nm][rt]||0)+1;});
       const allc={};RATES.forEach(k=>{allc[k]=Object.values(g).reduce((s,c)=>s+(c[k]||0),0);});const prior=anScore(allc);
