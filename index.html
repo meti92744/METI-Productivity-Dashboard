@@ -2838,7 +2838,7 @@ async function loadArchiveIds(){
 function mondayOf(d){
   const dt=d?new Date(d+'T12:00:00'):new Date();
   const day=dt.getDay();
-  const diff=day===0?1:1-day; /* Sunday belongs to the following Monday's work week (Sun 1 Nov -> Week of 02 Nov) */
+  const diff=day===0?-6:1-day;
   const mon=new Date(dt);mon.setDate(dt.getDate()+diff);
   return mon;
 }
