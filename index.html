@@ -2513,6 +2513,7 @@ function scanArchiveTab(tab,text,remainingMap,map){
   const idCols=[];h.forEach((x,i)=>{if(x==='id'||x==='task id'||x==='taskid')idCols.push(i);});
   if(!idCols.length)console.warn('Archive tab "'+tab.name+'": no ID / Task ID column — scanning every cell instead');
   const emI=h.findIndex(x=>x.startsWith('yubikey email')),nmI=h.indexOf('labeler name'),qtI=h.indexOf('qtc name');
+  const lkI=h.findIndex(x=>x==='task link'||x==='tasklink'||x==='link');
   let found=0;
   for(let i=1;i<table.length;i++){
     const row=table[i];if(!row)continue;
@@ -2523,7 +2524,8 @@ function scanArchiveTab(tab,text,remainingMap,map){
     const em=emI>=0?String(row[emI]||'').trim():'';
     const nm=nmI>=0?fmtPerson(row[nmI]):'';
     const qtc=qtI>=0?String(row[qtI]||'').trim():'';
-    hits.forEach(rid=>{map[rid]={name:nm||em||rid,email:em,qtc,group:qtcShiftGroup(qtc),src:'archive'};found++;});
+    const lk=lkI>=0?String(row[lkI]||'').trim():'';
+    hits.forEach(rid=>{map[rid]={name:nm||em||rid,email:em,qtc,group:qtcShiftGroup(qtc),src:'archive',link:lk};found++;});
   }
   return found;
 }
@@ -2804,7 +2806,7 @@ async function loadArchiveIds(){
       if(remote){
         archiveFetched++;archiveRemoteTabs++;updateArchiveBar();
         remote.forEach(h=>{const em=String(h.email||'').trim(),nm=fmtPerson(h.name),qtc=String(h.qtc||'').trim();
-          map[h.id]={name:nm||em||h.id,email:em,qtc,group:qtcShiftGroup(qtc),src:'archive'};});
+          map[h.id]={name:nm||em||h.id,email:em,qtc,group:qtcShiftGroup(qtc),src:'archive',link:String(h.link||h.taskLink||h['task link']||'').trim()};});
         archiveOkTabs.add(archiveTabKey(tab));
         console.info('Archive tab "'+tab.name+'" (server read): '+remote.length+' ID(s) found');
       }else{
@@ -3042,6 +3044,7 @@ function loadTeamsMap(){
 function computeQualityIdInfo(){
   const emailIdx=sIdx['Yubikey Email'];const nameIdx=sIdx['Labeler Name'];const qtcIdx=hdrs.findIndex(h=>h.toLowerCase()==='qtc name');
   const idIdx=hdrs.findIndex(h=>h.toLowerCase()==='id');
+  const lnkIdx=hdrs.findIndex(h=>{h=h.toLowerCase();return h==='task link'||h==='link';});
   const idInfo=Object.assign({},archiveIdInfo); // Archive first — current Data Base rows below override it for the same ID
   if(idIdx<0)return idInfo;
   rawRows.forEach(r=>{
@@ -3050,7 +3053,8 @@ function computeQualityIdInfo(){
     const nm=nameIdx!==undefined?String(r[nameIdx]||'').trim():'';
     const qtc=qtcIdx>=0?String(r[qtcIdx]||'').trim():'';
     const grp=qtcShiftGroup(qtc);
-    idInfo[rid]={name:nm||em||rid,email:em,qtc,group:grp};
+    const lk=lnkIdx>=0?String(r[lnkIdx]||'').trim():'';
+    idInfo[rid]={name:nm||em||rid,email:em,qtc,group:grp,link:lk};
   });
   return idInfo;
 }
@@ -3100,6 +3104,7 @@ function renderQualitySection(mc){
     QUALITY_METRICS.forEach(m=>{const n=qNum(q[m]);if(n!==null){t.sum[m]+=n;t.cnt[m]++;}});
     return true;
   }
+  window._qBuckets=buckets;
   const shiftIds={Morning:[],Night:[],Overnight:[],Empty:[],Unassigned:[]};
   let matched=0,unmatched=0,archiveHits=0;
   const unmatchedList=[];
@@ -3108,9 +3113,10 @@ function renderQualitySection(mc){
     shiftIds[grp].push(aid);
     const key=info.email||info.name;
     if(!buckets[grp][key]){
-      buckets[grp][key]={display:info.name,email:info.email||'',count:0,sum:{artifacts:0,attribute:0,tvaF1:0,totalAccuracy:0},cnt:{artifacts:0,attribute:0,tvaF1:0,totalAccuracy:0}};
+      buckets[grp][key]={display:info.name,email:info.email||'',count:0,tasks:[],sum:{artifacts:0,attribute:0,tvaF1:0,totalAccuracy:0},cnt:{artifacts:0,attribute:0,tvaF1:0,totalAccuracy:0}};
     }
     const b=buckets[grp][key];b.count++;
+    b.tasks.push({aid,q,qtc:info.qtc||(info.email?teamsTL[teamsKey(info.email)]:'')||'',link:info.link||''});
     QUALITY_METRICS.forEach(m=>{const n=qNum(q[m]);if(n!==null){b.sum[m]+=n;b.cnt[m]++;}});
     return grp;
   }
@@ -3164,7 +3170,7 @@ function renderQualitySection(mc){
 
   /* ---- Search by ID ---- */
   const searchSec=document.createElement('div');searchSec.className='sec';
-  searchSec.innerHTML=`<div class="sec-hd"><span class="sec-t">🔎 Find a task by ID</span></div><div class="ttbar"><input class="srch" id="qualityIdSearch" placeholder="🔍 Type the ID..." oninput="filterQualityById(this.value)"/><span class="rcnt" id="qualityIdCount">—</span></div><div id="qualityIdResult" style="padding:0 14px 14px"></div>`;
+  searchSec.innerHTML=`<div class="sec-hd"><span class="sec-t">🔎 Find a task by ID or Yubikey Email</span></div><div class="ttbar"><input class="srch" id="qualityIdSearch" placeholder="🔍 Type the ID or Yubikey Email..." oninput="filterQualityById(this.value)"/><span class="rcnt" id="qualityIdCount">—</span></div><div id="qualityIdResult" style="padding:0 14px 14px"></div>`;
   mc.appendChild(searchSec);
 
   /* ---- Ranked table per shift: sorted by Total Accuracy, medals for top 3, color-coded by accuracy tier ---- */
@@ -3182,11 +3188,12 @@ function renderQualitySection(mc){
     let shiftSumT=0,shiftCntT=0;people.forEach(p=>{shiftSumT+=p.sum.totalAccuracy;shiftCntT+=p.cnt.totalAccuracy;});
     const shiftAvgAcc=shiftCntT?shiftSumT/shiftCntT:null;
     const rowsHtml=people.map((p,i)=>{
+      const pk=Object.keys(buckets[grp]).find(k=>buckets[grp][k].display===p.display&&buckets[grp][k].email===p.email&&buckets[grp][k].count===p.count)||'';
       const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':`<span style="color:var(--muted);font-family:var(--mono);font-size:.55rem">#${i+1}</span>`;
       const tier=accTier(p.accAvg);
-      return `<tr style="border-bottom:1px solid var(--border-light)">
+      return `<tr class="qp-row" data-grp="${esc(grp)}" data-key="${esc(pk)}" onclick="toggleQualityPerson(this)" title="Click to see this labeler's quality tasks" style="border-bottom:1px solid var(--border-light);cursor:pointer">
         <td style="padding:6px 10px;font-size:.62rem;white-space:nowrap">${medal}</td>
-        <td style="padding:6px 10px;font-size:.66rem;color:var(--text);font-weight:700;white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis">${esc(p.display)}</td>
+        <td style="padding:6px 10px;font-size:.66rem;color:var(--text);font-weight:700;white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis"><span style="color:var(--primary)">▸</span> ${esc(p.display)}</td>
         <td style="padding:6px 10px;font-size:.58rem;color:var(--text-soft);white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis">${p.email?esc(p.email):'—'}</td>
         <td style="padding:6px 10px;text-align:center;font-size:.64rem;font-family:var(--mono);font-weight:700">${p.count}</td>
         <td style="padding:6px 10px;text-align:center;font-size:.62rem;font-family:var(--mono);color:var(--text-soft)">${qFmt(avgOf(p,'artifacts'))}</td>
@@ -3375,6 +3382,37 @@ function fallbackCopy(text,done){
   try{document.execCommand('copy');done();}catch(e){showToast('⚠️ Copy failed — select the text manually');}
   ta.remove();
 }
+function qLinkBtn(link){
+  if(!link)return '<span style="color:var(--muted);font-size:.55rem">no link</span>';
+  const href=/^https?:\/\//i.test(link)?link:'';
+  return href?`<a href="${esc(href)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--primary);font-weight:700;font-size:.6rem;text-decoration:none;white-space:nowrap">🔗 Open task</a>`:`<span style="font-size:.55rem;color:var(--text-soft)">${esc(link)}</span>`;
+}
+function toggleQualityPerson(tr){
+  const nx=tr.nextElementSibling;
+  const arrow=tr.querySelector('td:nth-child(2) span');
+  if(nx&&nx.classList.contains('qp-det')){nx.remove();if(arrow)arrow.textContent='▸';return;}
+  const b=((window._qBuckets||{})[tr.dataset.grp]||{})[tr.dataset.key];
+  if(!b)return;
+  const col=SHIFT_GROUP_COLORS[tr.dataset.grp]||'var(--primary)';
+  const tasks=(b.tasks||[]).slice().sort((x,y)=>{const a=qNum(x.q.totalAccuracy),c=qNum(y.q.totalAccuracy);return (a===null?101:a)-(c===null?101:c);});
+  const th='padding:5px 8px;font-size:.5rem;font-weight:700;color:var(--text-soft);text-align:left;border-bottom:1px solid var(--border)';
+  const td='padding:5px 8px;font-size:.6rem;border-bottom:1px solid var(--border-light)';
+  const rows=tasks.map(t=>{const tier=accTier(qNum(t.q.totalAccuracy));return `<tr>
+    <td style="${td};font-family:var(--mono);font-weight:700">${esc(t.aid)}</td>
+    <td style="${td}">${t.qtc?esc(t.qtc):'—'}</td>
+    <td style="${td};text-align:center;font-family:var(--mono)">${qFmt(qNum(t.q.artifacts))}</td>
+    <td style="${td};text-align:center;font-family:var(--mono)">${qFmt(qNum(t.q.attribute))}</td>
+    <td style="${td};text-align:center;font-family:var(--mono)">${qFmt(qNum(t.q.tvaF1))}</td>
+    <td style="${td};text-align:center"><span style="padding:2px 8px;border-radius:8px;font-weight:800;font-family:var(--mono);color:${tier.c};background:${tier.bg};border:1px solid ${tier.bd}">${qFmt(qNum(t.q.totalAccuracy))}</span></td>
+    <td style="${td}">${qLinkBtn(t.link)}</td></tr>`;}).join('');
+  const det=document.createElement('tr');det.className='qp-det';
+  det.innerHTML=`<td colspan="8" style="padding:0"><div style="margin:6px 10px 12px;padding:10px 12px;border:1px solid ${col}55;border-left:3px solid ${col};border-radius:10px;background:${col}0d" onclick="event.stopPropagation()">
+    <div style="font-size:.66rem;font-weight:800;margin-bottom:6px">📋 ${esc(b.display)}${b.email?` <span style="font-weight:500;color:var(--text-soft)">· ${esc(b.email)}</span>`:''} — ${tasks.length} task(s) with quality <span style="font-weight:500;color:var(--muted);font-size:.55rem">(lowest accuracy first)</span></div>
+    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr>
+      <th style="${th}">Task ID</th><th style="${th}">Sent to (QTC)</th><th style="${th};text-align:center">Artifacts</th><th style="${th};text-align:center">Attribute</th><th style="${th};text-align:center">TVA F1</th><th style="${th};text-align:center">Total</th><th style="${th}">Link</th>
+    </tr></thead><tbody>${rows}</tbody></table></div></div></td>`;
+  tr.after(det);if(arrow)arrow.textContent='▾';
+}
 function filterQualityById(val){
   const q=(val||'').trim().toLowerCase();
   const resEl=document.getElementById('qualityIdResult');
@@ -3382,22 +3420,32 @@ function filterQualityById(val){
   if(!resEl)return;
   if(!q){resEl.innerHTML='';if(cntEl)cntEl.textContent='—';return;}
   const idInfo=window._qualityIdInfo||computeQualityIdInfo();
-  const matches=Object.entries(qualityStore).filter(([aid])=>aid.toLowerCase().includes(q)).slice(0,30);
-  if(cntEl)cntEl.textContent=matches.length+' result(s)';
-  if(!matches.length){resEl.innerHTML='<div class="empty" style="padding:16px"><span>🔍</span>No task found with this ID</div>';return;}
+  // match the task ID, OR the Yubikey Email (from the Export tab or from Data Base/Archive), OR the labeler name
+  const all=Object.entries(qualityStore).filter(([aid,qd])=>{
+    if(aid.toLowerCase().includes(q))return true;
+    const info=idInfo[aid];
+    if(String(qd.email||'').toLowerCase().includes(q))return true;
+    if(info&&(String(info.email||'').toLowerCase().includes(q)||String(info.name||'').toLowerCase().includes(q)))return true;
+    return false;
+  });
+  const matches=all.slice(0,60);
+  if(cntEl)cntEl.textContent=all.length+' result(s)'+(all.length>matches.length?' · showing '+matches.length:'');
+  if(!matches.length){resEl.innerHTML='<div class="empty" style="padding:16px"><span>🔍</span>No task found with this ID / Email</div>';return;}
   resEl.innerHTML=`<div class="cgrid">`+matches.map(([aid,qd])=>{
     const info=idInfo[aid];
     const grp=info?info.group:null;
     const person=info?info.name:null;
-    const email=info?info.email:'';
+    const email=(info&&info.email)||qd.email||'';
     const qtc=info?info.qtc:'';
+    const link=info?info.link:'';
     const col=grp?SHIFT_GROUP_COLORS[grp]:'var(--danger)';
     return `<div class="dcard" style="cursor:var(--cur-arrow,default);border-color:${col}55;background:${col}0d">
       <div class="dc-top"><span class="dc-pc" style="color:${col}">🆔 ${esc(aid)}</span></div>
-      ${person?`<div class="dc-meta"><span class="dc-mi">👤</span><span class="dc-mt">${esc(person)}</span></div>${email?`<div class="dc-meta"><span class="dc-mi">✉️</span><span class="dc-mt">${esc(email)}</span></div>`:''}${qtc?`<div class="dc-meta"><span class="dc-mi">🏷️</span><span class="dc-mt">${esc(qtc)}</span></div>`:''}<div class="dc-meta"><span class="dc-mi">${grp?SHIFT_GROUP_ICON[grp]:''}</span><span class="dc-mt">${esc(grp||'—')} Shift</span></div>`:`<div class="dc-meta"><span class="dc-mi">🚫</span><span class="dc-mt">Unmatched</span></div>`}
+      ${person?`<div class="dc-meta"><span class="dc-mi">👤</span><span class="dc-mt">${esc(person)}</span></div>${email?`<div class="dc-meta"><span class="dc-mi">✉️</span><span class="dc-mt">${esc(email)}</span></div>`:''}${qtc?`<div class="dc-meta"><span class="dc-mi">🏷️</span><span class="dc-mt">${esc(qtc)}</span></div>`:''}<div class="dc-meta"><span class="dc-mi">${grp?SHIFT_GROUP_ICON[grp]:''}</span><span class="dc-mt">${esc(grp||'—')} Shift</span></div>`:`${email?`<div class="dc-meta"><span class="dc-mi">✉️</span><span class="dc-mt">${esc(email)}</span></div>`:''}<div class="dc-meta"><span class="dc-mi">🚫</span><span class="dc-mt">Unmatched</span></div>`}
       <div class="dc-meta"><span class="dc-mi">🧩</span><span class="dc-mt">Artifacts: ${qFmt(qNum(qd.artifacts))}</span></div>
       <div class="dc-meta"><span class="dc-mi">🏷️</span><span class="dc-mt">Attribute: ${qFmt(qNum(qd.attribute))}</span></div>
       <div class="dc-meta"><span class="dc-mi">📐</span><span class="dc-mt">TVA F1: ${qFmt(qNum(qd.tvaF1))}</span></div>
+      ${link?`<div class="dc-meta"><span class="dc-mi">🔗</span><span class="dc-mt">${qLinkBtn(link)}</span></div>`:''}
       <div class="dc-qs"><span class="qtag" style="background:${col}22;color:${col};border-color:${col}55;font-weight:800">🎯 Total: ${qFmt(qNum(qd.totalAccuracy))}</span></div>
     </div>`;
   }).join('')+`</div>`;
