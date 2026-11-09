@@ -2295,7 +2295,11 @@ let autoRefreshTimer=null,_filtersRestored=false;
 document.addEventListener('click',e=>{if(!e.target.closest('.fg'))closeAll();});
 function toggleShift(id,btn){shiftState[id].on=!shiftState[id].on;btn.classList.toggle('on',shiftState[id].on);btn.querySelector('.dot').textContent=shiftState[id].on?'●':'○';applyAll();}
 function setShiftsUI(map){Object.keys(shiftState).forEach(k=>{const on=!!(map&&map[k]);shiftState[k].on=on;const b=document.getElementById('btn_'+k);if(b){b.classList.toggle('on',on);const d=b.querySelector('.dot');if(d)d.textContent=on?'●':'○';}});}
-function isRowAllowed(r){const ci=sIdx['Shift'];if(ci===undefined)return true;const sv=String(r[ci]||'').trim().toLowerCase();const anyOn=Object.values(shiftState).some(c=>c.on);if(!anyOn)return true;return Object.values(shiftState).some(c=>c.on&&sv===c.key);}
+const QTC_BASE_SHIFT={Morning:'morning',Night:'night',Overnight:'over night'};
+/* the shift a row counts under in Analysis = the QTC's shift (the (M)/(N)/(ON) next to the name), even if the task was submitted in another shift.
+   If the QTC's shift matches the submit shift, the exact shift (e.g. Morning 12 H) is kept; otherwise it goes to the QTC shift's main shift. */
+function effectiveShift(r){const ci=sIdx['Shift'];const sv=ci===undefined?'':String(r[ci]||'').trim().toLowerCase();const qi=sIdx['Qtc Name'];const qg=qi!==undefined?qtcShiftGroup(r[qi]):null;if(!qg)return sv;if(SHIFT_GROUP_OF[sv]===qg)return sv;return QTC_BASE_SHIFT[qg];}
+function isRowAllowed(r){const ci=sIdx['Shift'];if(ci===undefined)return true;const sv=effectiveShift(r);const anyOn=Object.values(shiftState).some(c=>c.on);if(!anyOn)return true;return Object.values(shiftState).some(c=>c.on&&sv===c.key);}
 function parseCSV(text){
   const rows=[];let row=[];let field='';let inQuotes=false;
   for(let i=0;i<text.length;i++){
@@ -2834,7 +2838,7 @@ async function loadArchiveIds(){
 function mondayOf(d){
   const dt=d?new Date(d+'T12:00:00'):new Date();
   const day=dt.getDay();
-  const diff=day===0?-6:1-day;
+  const diff=day===0?1:1-day; /* Sunday belongs to the following Monday's work week (Sun 1 Nov -> Week of 02 Nov) */
   const mon=new Date(dt);mon.setDate(dt.getDate()+diff);
   return mon;
 }
