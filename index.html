@@ -2483,18 +2483,25 @@ function computeUnresolvedQualityIds(){
 // downloads ONE archive tab (by gid when known — survives renames — otherwise by name). Retries up to 3 times (Google
 // throttles parallel gviz requests) and treats an HTML answer (login / error page) as a failure, not as an empty tab
 async function fetchArchiveTab(tab){
+  const sid=tab.sheetId||ARCHIVE_SHEET_ID;
   const sel=tab.gid!=null&&tab.gid!==''?`gid=${encodeURIComponent(tab.gid)}`:`sheet=${encodeURIComponent(tab.name)}`;
-  const url=`https://docs.google.com/spreadsheets/d/${tab.sheetId||ARCHIVE_SHEET_ID}/gviz/tq?tqx=out:csv&headers=1&${sel}`;
-  for(let attempt=1;attempt<=3;attempt++){
+  const urls=[`https://docs.google.com/spreadsheets/d/${sid}/gviz/tq?tqx=out:csv&headers=1&${sel}`];
+  // 2nd route (used on later attempts): plain CSV export — works for big tabs where gviz times out / throttles
+  if(tab.gid!=null&&tab.gid!=='')urls.push(`https://docs.google.com/spreadsheets/d/${sid}/export?format=csv&gid=${encodeURIComponent(tab.gid)}`);
+  for(let attempt=1;attempt<=4;attempt++){
+    const url=urls[(attempt-1)%urls.length];
+    const ctl=new AbortController();const to=setTimeout(()=>ctl.abort(),45000);
     try{
-      const r=await fetch(url);
+      const r=await fetch(url,{signal:ctl.signal});
       if(r.ok){
         const t=await r.text();
+        clearTimeout(to);
         if(!/^\s*</.test(t))return t;
         console.warn('Archive tab "'+tab.name+'": got an HTML page instead of CSV (attempt '+attempt+')');
       }else console.warn('Archive tab "'+tab.name+'": HTTP '+r.status+' (attempt '+attempt+')');
     }catch(e){console.warn('Archive tab "'+tab.name+'" fetch error (attempt '+attempt+'): '+e.message);}
-    if(attempt<3)await new Promise(res=>setTimeout(res,700*attempt));
+    clearTimeout(to);
+    if(attempt<4)await new Promise(res=>setTimeout(res,900*attempt));
   }
   return null;
 }
@@ -2550,7 +2557,7 @@ let _arcsOnProg=null;       // set by the running search so it can redraw the ba
 function arcSet(k,v){_arcP.set(k,v);if(_arcsOnProg)_arcsOnProg();}
 // at most 4 tab downloads at once (Google throttles bigger bursts); every extra one waits in line
 let _arcActive=0;const _arcQ=[];
-function arcSlot(k,urgent){return new Promise(res=>{const go=()=>{_arcActive++;res();};if(_arcActive<4)go();else{const e={k,go};urgent?_arcQ.unshift(e):_arcQ.push(e);}});}
+function arcSlot(k,urgent){return new Promise(res=>{const go=()=>{_arcActive++;res();};if(_arcActive<3)go();else{const e={k,go};urgent?_arcQ.unshift(e):_arcQ.push(e);}});}
 function arcBoost(k){const i=_arcQ.findIndex(e=>e.k===k);if(i>0){const e=_arcQ.splice(i,1)[0];_arcQ.unshift(e);}} // a tab the user is waiting for jumps ahead of the background prefetch
 function arcFree(){_arcActive--;const n=_arcQ.shift();if(n)n.go();}
 // The promise itself is cached, so a second search (or the background prefetch) that asks for a tab that is still
@@ -2568,7 +2575,7 @@ function loadArchiveTabTable(tab,urgent){
       arcSet(k,.7);
       await new Promise(r=>setTimeout(r,0)); // let the page repaint before the heavy CSV parse
       const table=parseCSV(text).filter(row=>row&&row.length&&!(row.length===1&&String(row[0]||'').trim()===''));
-      if(!table.length){arcSet(k,1);return null;}
+      if(!table.length){const e0={h:[],raw:[],rows:[],keys:null,empty:true};arcSet(k,1);return e0;} // empty tab = nothing to find, NOT a read error
       const h=table[0].map(normHdr);
       const idCols=[];h.forEach((x,i)=>{if(x==='id'||x==='task id'||x==='taskid')idCols.push(i);});
       const rows=table.slice(1);
@@ -2711,7 +2718,7 @@ async function runArchiveSearch(){
   const fail=msg=>{st.textContent=msg;_arcsOnProg=null;prog.style.display='none';};
   if(!idq&&!hasOther){fail('Type an ID (3+ characters) or pick at least one filter, then press Search.');return;}
   if(idq&&idq.length<3&&!hasOther){fail('Type at least 3 characters of the ID.');return;}
-  const MAX=50;let shown=0,total=0,failed=0,done=0;
+  const MAX=50;let shown=0,total=0,failed=0,done=0;const failedNames=[];
   st.textContent='Searching…';prog.style.display='flex';fill.style.width='0%';pctEl.textContent='0%';
   let tabs;try{tabs=await resolveArchiveTabs();}catch(e){tabs=archiveTabList;}
   if(my!==_arcsToken)return;
@@ -2738,10 +2745,12 @@ async function runArchiveSearch(){
   };
   _arcsOnProg=draw;draw();
   const scan=async tab=>{
-    const t=await loadArchiveTabTable(tab,true);
+    let t=await loadArchiveTabTable(tab,true);
+    // a tab that failed is retried automatically (2 more rounds, with a pause) before it is reported as unreadable
+    for(let r=1;r<=2&&!t&&my===_arcsToken&&!stopped;r++){await new Promise(res=>setTimeout(res,1500*r));t=await loadArchiveTabTable(tab,true);}
     if(my!==_arcsToken||stopped)return;
     done++;searched.add(archiveTabKey(tab));
-    if(!t){failed++;}
+    if(!t){failed++;failedNames.push(tab.name);}
     else{
       arcPrep(t);
       // a tab that lacks one of the filtered columns simply cannot match
@@ -2777,7 +2786,7 @@ async function runArchiveSearch(){
   stopped=true;
   _arcsOnProg=null;fill.style.width='100%';pctEl.textContent='100%';
   if(exactTab&&searched.size<tabs.length){st.textContent='Found in '+exactTab+' · '+total+' match'+(total>1?'es':'')+' · stopped early ('+searched.size+'/'+tabs.length+' tabs searched, the rest keep loading in the background)';return;}
-  st.textContent=(total?total+' match'+(total>1?'es':'')+' in the archive'+(total>shown?' (showing first '+shown+')':''):'Not found in the archive')+' · '+(tabs.length-failed)+'/'+tabs.length+' tabs read'+(failed?' — '+failed+' tab(s) could not be read, press Search again to retry':'');
+  st.textContent=(total?total+' match'+(total>1?'es':'')+' in the archive'+(total>shown?' (showing first '+shown+')':''):'Not found in the archive')+' · '+(tabs.length-failed)+'/'+tabs.length+' tabs read'+(failed?' — '+failed+' tab(s) could not be read ('+failedNames.join(', ')+'), press Search again to retry':'');
 }
 async function loadArchiveIds(){
   if(!ARCHIVE_SHEET_ID)return;
