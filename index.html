@@ -5039,7 +5039,7 @@ function anTasks(){
   const c={id:anCol('Id'),lab:anCol('Labeler Name'),qc:anCol('Qtc Name'),st:anCol('Stage'),pass:anCol('Pass'),at:tsColIdx(hdrs),lnk:anCol('Task Link'),sh:anCol('Shift'),obj:anCol('Object Count')};
   return Array.from(rawRows.map(r=>{const d=parseTs(r[c.at]);const ok=!!d;const stage=String(r[c.st]||'');
     return{id:String(r[c.id]||'').trim(),lab:String(r[c.lab]||'').trim(),qc:String(r[c.qc]||'').replace(/\s*\([^)]*\)\s*$/,'').trim(),
-      type:/lidar/i.test(stage)?'Lidar':'Lane Line',pass:String(r[c.pass]||'').trim(),shiftRaw:(c.sh>=0?String(r[c.sh]||'').trim():''),obj:(c.obj>=0?(v=>isNaN(v)?null:v)(parseFloat(String(r[c.obj]??'').replace(/,/g,''))):null),link:String(r[c.lnk]||''),shift:(v=>/over/.test(v)?'ON':/night/.test(v)?'N':/morn|day/.test(v)?'M':'')(String(r[c.sh]||'').toLowerCase()),time:ok?d.getTime():0,day:ok?anYmd(d):'',ts:ok?fmt12(d):''};
+      qshift:({Morning:'M',Night:'N',Overnight:'ON'})[qtcShiftGroup(String(r[c.qc]||'').trim())]||'',type:/lidar/i.test(stage)?'Lidar':'Lane Line',pass:String(r[c.pass]||'').trim(),shiftRaw:(c.sh>=0?String(r[c.sh]||'').trim():''),obj:(c.obj>=0?(v=>isNaN(v)?null:v)(parseFloat(String(r[c.obj]??'').replace(/,/g,''))):null),link:String(r[c.lnk]||''),shift:(v=>/over/.test(v)?'ON':/night/.test(v)?'N':/morn|day/.test(v)?'M':'')(String(r[c.sh]||'').toLowerCase()),time:ok?d.getTime():0,day:ok?anYmd(d):'',ts:ok?fmt12(d):''};
   }).filter(t=>t.id).reduce((m,t)=>{const o=m.get(t.id);if(!o||t.time>=o.time)m.set(t.id,t);return m;},new Map()).values()) /* ONE row per Task ID: duplicate rows in the source sheet are collapsed (the latest one is kept), so a task is shown and counted once */
   ;
 }
@@ -5267,7 +5267,8 @@ function anFiltered(all){
     const _d=anView==='ratings'?anADay(t):t.day;
     if(anF.from&&_d<anF.from)return false;if(anF.to&&_d>anF.to)return false;
     if(anF.lab.size&&!anF.lab.has(t.lab))return false;if(anF.qc.size&&!anF.qc.has(t.qc))return false;
-    if(anF.type.size&&!anF.type.has(t.type))return false;if(anF.shift&&t.shift!==anF.shift)return false;if(anF.mine&&!anIsMine(t.id))return false;if(anF.pass.size&&!anF.pass.has(t.pass))return false;
+    if(anF.type.size&&!anF.type.has(t.type))return false;const _sh=(anView==='ratings'&&anGroup==='QC')?(t.qshift||t.shift):t.shift;   /* Ratings by QTC: the shift filter follows the QTC's own shift, even if the task was done in another shift */
+    if(anF.shift&&_sh!==anF.shift)return false;if(anF.mine&&!anIsMine(t.id))return false;if(anF.pass.size&&!anF.pass.has(t.pass))return false;
     if(anF.q&&!(t.id.includes(anF.q)||t.lab.toLowerCase().includes(anF.q.toLowerCase())))return false;
     if(anF.status==='Not analyzed'&&l)return false;if(anF.status==='Analyzed'&&!l)return false;if(anF.status==='Has issue'&&!(l&&l.issue))return false;return true;});
 }
