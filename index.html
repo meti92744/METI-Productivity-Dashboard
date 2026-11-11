@@ -2557,7 +2557,7 @@ let _arcsOnProg=null;       // set by the running search so it can redraw the ba
 function arcSet(k,v){_arcP.set(k,v);if(_arcsOnProg)_arcsOnProg();}
 // at most 4 tab downloads at once (Google throttles bigger bursts); every extra one waits in line
 let _arcActive=0;const _arcQ=[];
-function arcSlot(k,urgent){return new Promise(res=>{const go=()=>{_arcActive++;res();};if(_arcActive<3)go();else{const e={k,go};urgent?_arcQ.unshift(e):_arcQ.push(e);}});}
+function arcSlot(k,urgent){return new Promise(res=>{const go=()=>{_arcActive++;res();};if(_arcActive<2)go();else{const e={k,go};urgent?_arcQ.unshift(e):_arcQ.push(e);}});}
 function arcBoost(k){const i=_arcQ.findIndex(e=>e.k===k);if(i>0){const e=_arcQ.splice(i,1)[0];_arcQ.unshift(e);}} // a tab the user is waiting for jumps ahead of the background prefetch
 function arcFree(){_arcActive--;const n=_arcQ.shift();if(n)n.go();}
 // The promise itself is cached, so a second search (or the background prefetch) that asks for a tab that is still
@@ -2603,10 +2603,11 @@ function openArchiveSearch(){
   const inp=document.getElementById('arcsIn');
   if(idFilter&&!inp.value)inp.value=idFilter;
   inp.focus();inp.select();
-  prefetchArchiveTabs();
+  /* no automatic prefetch of every archive tab (it kept GBs of parsed rows in memory) — tabs load when a search runs */
   if(inp.value.trim().length>=3&&!document.getElementById('arcsRes').children.length)runArchiveSearch();
 }
-function closeArchiveSearch(){_arcsToken++;_arcsOnProg=null;if(arcOpenK)arcCloseDr(arcOpenK);const ov=document.getElementById('arcsOv');if(ov)ov.classList.remove('on');const go=document.getElementById('arcsGo');if(go)go.disabled=false;}
+function arcFreeMemory(){try{archiveTabCache.clear();archiveTabData.clear();_arcP.clear();window._arcHits=[];const r=document.getElementById('arcsRes');if(r)r.innerHTML='';}catch(_){}}
+function closeArchiveSearch(){_arcsToken++;_arcsOnProg=null;setTimeout(arcFreeMemory,300);if(arcOpenK)arcCloseDr(arcOpenK);const ov=document.getElementById('arcsOv');if(ov)ov.classList.remove('on');const go=document.getElementById('arcsGo');if(go)go.disabled=false;}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){const ov=document.getElementById('arcsOv');if(ov&&ov.classList.contains('on'))closeArchiveSearch();}});
 // ===== Archive filters: dropdowns that look & behave like the dashboard's own filter strip (same chips, panels, checkboxes, counts) =====
 const ARC_FILTERS=SC.map(sc=>({key:sc.key,col:sc.key.toLowerCase(),lbl:sc.lbl,ic:sc.ic})); // QTC / Email / Labeler / Device / Modality / Queue / Pass → archive column of the same name
@@ -4564,7 +4565,8 @@ const ax={grid:{display:false},border:{display:false}};
 function grad(c,col){const g=c.createLinearGradient(0,0,0,250);g.addColorStop(0,col+'55');g.addColorStop(1,col+'00');return g}
 function mk(cv,build,anim){const c=cv.getContext('2d');Chart.defaults.font.family=cs('--font');Chart.defaults.color=cs('--muted');Chart.defaults.font.size=12;Chart.defaults.devicePixelRatio=window._lite?1:Math.min(2,window.devicePixelRatio||1);
 const cfg=build(PAL[th()],c);cfg.options=Object.assign({maintainAspectRatio:false,animation:(anim&&!window._lite)?{duration:1000,easing:'easeOutQuart'}:false},cfg.options);const ch=new Chart(cv,cfg);if(cv.parentNode)cv.parentNode.classList.add('rdy');return ch}
-function redraw(anim){reg=reg.filter(o=>o.cv.isConnected);reg.forEach(o=>{if(o.ch){o.ch.destroy();o.ch=mk(o.cv,o.build,anim)}});if(window._pnlRedraw)window._pnlRedraw()}
+function pruneReg(){reg=reg.filter(o=>{if(o.cv.isConnected)return true;try{if(o.ch){o.ch.destroy();o.ch=null;}}catch(_){}return false;});}
+function redraw(anim){pruneReg();reg.forEach(o=>{if(o.ch){o.ch.destroy();o.ch=mk(o.cv,o.build,anim)}});if(window._pnlRedraw)window._pnlRedraw()}
 const seen=new Set();
 function add(cv,build){const o={cv,build,ch:null},key=cv.dataset.k||'',first=!seen.has(key);seen.add(key);reg.push(o);
 const go=()=>lib().then(()=>{if(cv.isConnected)o.ch=mk(cv,build,first)}).catch(()=>{});
@@ -4574,7 +4576,7 @@ function box(title,cls,inner){const d=document.createElement('div');d.className=
 function addInsights(wrap,locName,rows){
 const hl=hdrs.map(h=>String(h||'').toLowerCase()),mI=hl.indexOf('modality'),pI=hl.indexOf('pass'),qI=hl.indexOf('queue name');
 if(!rows.length||tsIdx<0)return;
-reg=reg.filter(o=>o.cv.isConnected);
+pruneReg();
 const days={},mods={},mp={};
 const perLoc=!locName&&locColIdx>=0&&locations.length>1;
 rows.forEach(r=>{const d=rDate(r),m=mI>=0?String(r[mI]||'').trim():'',sk=perLoc?String(r[locColIdx]||'').trim():m;if(d){(days[d]=days[d]||{})[sk||'Other']=(days[d][sk||'Other']||0)+1}if(sk)mods[sk]=1;if(m&&pI>=0){const k=m+' '+String(r[pI]||'').trim();mp[k]=(mp[k]||0)+1}});
