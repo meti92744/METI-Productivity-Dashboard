@@ -3748,7 +3748,7 @@ function updPills(){const w=document.getElementById('pillsRow');const ps=[];let 
 
 /* ===== PATCH #2: race-condition-safe tab switching (token guard) ===== */
 let _tabRenderToken=0;
-function buildTabs(){const c=document.getElementById('locTabs');const _sl=c.scrollLeft,_first=!c.dataset.built;let h=`<div class="loc-tab loc-all-tab${activeLoc==='__all__'?' act':''}" data-loc="__all__" onclick="switchTab('__all__')">🌐 All <span class="tab-cnt">${fcache.length}</span></div>`;h+=`<div class="loc-tab loc-all-tab${activeLoc==='__totalsubmit__'?' act':''}" data-loc="__totalsubmit__" onclick="switchTab('__totalsubmit__')">📊 Total Submit</div>`;h+=`<div class="loc-tab loc-all-tab${activeLoc==='__topperf__'?' act':''}" data-loc="__topperf__" onclick="switchTab('__topperf__')">🏆 Top Performers</div>`;h+=`<div class="loc-tab loc-all-tab${activeLoc==='__quality__'?' act':''}" data-loc="__quality__" onclick="switchTab('__quality__')">🎯 Quality</div>`;if(anAllowed())h+=`<div class="loc-tab loc-all-tab${activeLoc==='__analysis__'?' act':''}" data-loc="__analysis__" onclick="anLogLoaded=false;switchTab('__analysis__')">🔎 Analysis</div>`;locations.forEach(loc=>{const cnt=fcache.filter(r=>locColIdx>=0?String(r[locColIdx]||'').trim()===loc:true).length;h+=`<div class="loc-tab${activeLoc===loc?' act':''}" data-loc="${esc(loc)}" onclick="switchTab('${esc(loc)}')">📍 ${esc(loc)} <span class="tab-cnt">${cnt}</span></div>`;});c.innerHTML=h;c.dataset.built='1';c.scrollLeft=_sl;if(_first)centerActiveTab(false);}
+function buildTabs(){const c=document.getElementById('locTabs');const _sl=c.scrollLeft,_first=!c.dataset.built;let h=`<div class="loc-tab loc-all-tab${activeLoc==='__all__'?' act':''}" data-loc="__all__" onclick="switchTab('__all__')">🌐 All <span class="tab-cnt">${fcache.length}</span></div>`;h+=`<div class="loc-tab loc-all-tab${activeLoc==='__totalsubmit__'?' act':''}" data-loc="__totalsubmit__" onclick="switchTab('__totalsubmit__')">📊 Total Submit</div>`;h+=`<div class="loc-tab loc-all-tab${activeLoc==='__topperf__'?' act':''}" data-loc="__topperf__" onclick="switchTab('__topperf__')">🏆 Top Performers</div>`;h+=`<div class="loc-tab loc-all-tab${activeLoc==='__quality__'?' act':''}" data-loc="__quality__" onclick="switchTab('__quality__')">🎯 Quality</div>`;if(anAllowed())h+=`<div class="loc-tab loc-all-tab${activeLoc==='__analysis__'?' act':''}" data-loc="__analysis__" onclick="switchTab('__analysis__');anBgSync()">🔎 Analysis</div>`;locations.forEach(loc=>{const cnt=fcache.filter(r=>locColIdx>=0?String(r[locColIdx]||'').trim()===loc:true).length;h+=`<div class="loc-tab${activeLoc===loc?' act':''}" data-loc="${esc(loc)}" onclick="switchTab('${esc(loc)}')">📍 ${esc(loc)} <span class="tab-cnt">${cnt}</span></div>`;});c.innerHTML=h;c.dataset.built='1';c.scrollLeft=_sl;if(_first)centerActiveTab(false);}
 function centerActiveTab(smooth){const c=document.getElementById('locTabs'),a=c&&c.querySelector('.loc-tab.act');if(!a)return;const x=Math.max(0,a.offsetLeft-(c.clientWidth-a.offsetWidth)/2);if(smooth&&c.scrollTo)c.scrollTo({left:x,behavior:'smooth'});else c.scrollLeft=x;}
 function switchTab(loc){
   activeLoc=loc;
@@ -3829,7 +3829,7 @@ function buildLocOverview(){
   if(heat){heat.addEventListener('click',e=>{const ch=e.target.closest('.lo-chip');if(ch&&ch.dataset.hm){_loHm=ch.dataset.hm;_loSave();paintHeat(ordered());return;}const r=e.target.closest('[data-loc]');if(r)goLoc(r.dataset.loc);});sec._extra=heat;}
   return sec;
 }
-function renderAllSections(){const mc=document.getElementById('mainContent');const cmpRes=document.getElementById('cmpResultSection');if(activeLoc==='__analysis__'){if(anAllowed())renderAnalysis(mc);else mc.innerHTML='<div style="text-align:center;padding:60px 20px;color:var(--muted)">🔒 No access to Analysis</div>';return;}if(activeLoc==='__quality__'){mc.innerHTML='';if(cmpRes)mc.appendChild(cmpRes);renderQualitySection(mc);return;}if(fcache.length===0&&rawRows.length===0){mc.innerHTML=`<div style="text-align:center;padding:60px 20px;color:var(--muted)"><svg style="width:52px;height:52px;margin:0 auto 12px;display:block" viewBox="0 0 64 40" xmlns="http://www.w3.org/2000/svg"><path d="M6 26 Q4 26 4 22 L6 18 Q10 12 20 11 L26 6 Q30 3 38 3 L46 6 Q52 8 56 14 L60 18 Q62 20 62 22 L62 26 Z" fill="#dfe6ea" stroke="#7a9dae" stroke-width="1.5"/><path d="M22 11 L28 6 Q31 4 37 4 L44 6 Q48 8 51 12 L52 14 L22 14 Z" fill="#3c6478" opacity=".6"/><circle cx="16" cy="27" r="6" fill="#3c6478"/><circle cx="50" cy="27" r="6" fill="#3c6478"/></svg><div style="font-size:.85rem;font-weight:700;color:var(--text);margin-bottom:6px">No data found — the car's still on its way 🛣️</div><button class="btn" style="margin-top:10px" onclick="loadData()">↻ Retry</button></div>`;return;}if(fcache.length===0&&rawRows.length>0){mc.innerHTML=`<div style="text-align:center;padding:60px 20px;color:var(--muted)"><svg style="width:52px;height:52px;margin:0 auto 12px;display:block" viewBox="0 0 64 40" xmlns="http://www.w3.org/2000/svg"><path d="M6 26 Q4 26 4 22 L6 18 Q10 12 20 11 L26 6 Q30 3 38 3 L46 6 Q52 8 56 14 L60 18 Q62 20 62 22 L62 26 Z" fill="#dfe6ea" stroke="#7a9dae" stroke-width="1.5"/><path d="M22 11 L28 6 Q31 4 37 4 L44 6 Q48 8 51 12 L52 14 L22 14 Z" fill="#3c6478" opacity=".6"/><circle cx="16" cy="27" r="6" fill="#3c6478"/><circle cx="50" cy="27" r="6" fill="#3c6478"/></svg><div style="font-size:.85rem;font-weight:700;color:var(--text);margin-bottom:6px">No rows match current filters — wrong turn 🚧</div><div style="font-size:.7rem;margin-bottom:12px">${rawRows.length} total rows loaded.</div><button class="btn" onclick="clearAll()">✕ Clear all filters</button></div>`;return;}if(activeLoc==='__totalsubmit__'){mc.innerHTML='';if(cmpRes)mc.appendChild(cmpRes);renderTotalSubmitSection(mc);return;}if(activeLoc==='__topperf__'){mc.innerHTML='';if(cmpRes)mc.appendChild(cmpRes);renderTopPerformersSection(mc);return;}const locsToRender=activeLoc==='__all__'?locations:[activeLoc];mc.innerHTML='';if(cmpRes)mc.appendChild(cmpRes);if(locations.length===0||locColIdx<0){const wrap=document.createElement('div');wrap.className='loc-section visible';mc.appendChild(wrap);renderLocSection(wrap,null,fcache);return;}if(activeLoc==='__all__'){const wrap=document.createElement('div');wrap.className='loc-section visible';mc.appendChild(wrap);renderLocSection(wrap,null,fcache);const hd=wrap.querySelector('.loc-hdr'),ov=buildLocOverview();if(hd&&ov){hd.after(ov);if(ov._extra)ov.after(ov._extra);}return;}locsToRender.forEach(loc=>{const locRows=fcache.filter(r=>String(r[locColIdx]||'').trim()===loc);const wrap=document.createElement('div');wrap.className='loc-section visible';mc.appendChild(wrap);renderLocSection(wrap,loc,locRows);});}
+function renderAllSections(){if(typeof anCacheTick==='function')anCacheTick();const mc=document.getElementById('mainContent');const cmpRes=document.getElementById('cmpResultSection');if(activeLoc==='__analysis__'){if(anAllowed())renderAnalysis(mc);else mc.innerHTML='<div style="text-align:center;padding:60px 20px;color:var(--muted)">🔒 No access to Analysis</div>';return;}if(activeLoc==='__quality__'){mc.innerHTML='';if(cmpRes)mc.appendChild(cmpRes);renderQualitySection(mc);return;}if(fcache.length===0&&rawRows.length===0){mc.innerHTML=`<div style="text-align:center;padding:60px 20px;color:var(--muted)"><svg style="width:52px;height:52px;margin:0 auto 12px;display:block" viewBox="0 0 64 40" xmlns="http://www.w3.org/2000/svg"><path d="M6 26 Q4 26 4 22 L6 18 Q10 12 20 11 L26 6 Q30 3 38 3 L46 6 Q52 8 56 14 L60 18 Q62 20 62 22 L62 26 Z" fill="#dfe6ea" stroke="#7a9dae" stroke-width="1.5"/><path d="M22 11 L28 6 Q31 4 37 4 L44 6 Q48 8 51 12 L52 14 L22 14 Z" fill="#3c6478" opacity=".6"/><circle cx="16" cy="27" r="6" fill="#3c6478"/><circle cx="50" cy="27" r="6" fill="#3c6478"/></svg><div style="font-size:.85rem;font-weight:700;color:var(--text);margin-bottom:6px">No data found — the car's still on its way 🛣️</div><button class="btn" style="margin-top:10px" onclick="loadData()">↻ Retry</button></div>`;return;}if(fcache.length===0&&rawRows.length>0){mc.innerHTML=`<div style="text-align:center;padding:60px 20px;color:var(--muted)"><svg style="width:52px;height:52px;margin:0 auto 12px;display:block" viewBox="0 0 64 40" xmlns="http://www.w3.org/2000/svg"><path d="M6 26 Q4 26 4 22 L6 18 Q10 12 20 11 L26 6 Q30 3 38 3 L46 6 Q52 8 56 14 L60 18 Q62 20 62 22 L62 26 Z" fill="#dfe6ea" stroke="#7a9dae" stroke-width="1.5"/><path d="M22 11 L28 6 Q31 4 37 4 L44 6 Q48 8 51 12 L52 14 L22 14 Z" fill="#3c6478" opacity=".6"/><circle cx="16" cy="27" r="6" fill="#3c6478"/><circle cx="50" cy="27" r="6" fill="#3c6478"/></svg><div style="font-size:.85rem;font-weight:700;color:var(--text);margin-bottom:6px">No rows match current filters — wrong turn 🚧</div><div style="font-size:.7rem;margin-bottom:12px">${rawRows.length} total rows loaded.</div><button class="btn" onclick="clearAll()">✕ Clear all filters</button></div>`;return;}if(activeLoc==='__totalsubmit__'){mc.innerHTML='';if(cmpRes)mc.appendChild(cmpRes);renderTotalSubmitSection(mc);return;}if(activeLoc==='__topperf__'){mc.innerHTML='';if(cmpRes)mc.appendChild(cmpRes);renderTopPerformersSection(mc);return;}const locsToRender=activeLoc==='__all__'?locations:[activeLoc];mc.innerHTML='';if(cmpRes)mc.appendChild(cmpRes);if(locations.length===0||locColIdx<0){const wrap=document.createElement('div');wrap.className='loc-section visible';mc.appendChild(wrap);renderLocSection(wrap,null,fcache);return;}if(activeLoc==='__all__'){const wrap=document.createElement('div');wrap.className='loc-section visible';mc.appendChild(wrap);renderLocSection(wrap,null,fcache);const hd=wrap.querySelector('.loc-hdr'),ov=buildLocOverview();if(hd&&ov){hd.after(ov);if(ov._extra)ov.after(ov._extra);}return;}locsToRender.forEach(loc=>{const locRows=fcache.filter(r=>String(r[locColIdx]||'').trim()===loc);const wrap=document.createElement('div');wrap.className='loc-section visible';mc.appendChild(wrap);renderLocSection(wrap,loc,locRows);});}
 function buildSpeedometer(pct,color){
   pct=Math.max(0,Math.min(100,Math.round(pct)));
   const angle=-90+(pct/100)*180,rad=angle*Math.PI/180,cx=40,cy=40,r=30;
@@ -4948,8 +4948,17 @@ function anMineIds(){try{return JSON.parse(localStorage.getItem('an_mine_'+anMe(
 function anMineAdd(id){try{const m=anMineIds();m[id]=1;localStorage.setItem('an_mine_'+anMe(),JSON.stringify(m));}catch(_){}}
 /* Issue box only exists when a rating is below Excellent */
 function anIssueOn(v){return !!((v.lr&&v.lr!=='Excellent')||(v.qr&&v.qr!=='Excellent'));}
-let anLimit=300;
-function anMore(){anLimit+=300;renderAnalysis(document.getElementById('mainContent'));}
+let anLimit=100;
+let _anList=[];
+function anMore(){   // append the next rows only (no full re-render)
+  const l=document.querySelector('.an-list');
+  if(!l||!_anList.length){anLimit+=100;renderAnalysis(document.getElementById('mainContent'));return;}
+  const from=Math.min(anLimit,_anList.length);anLimit+=100;
+  l.insertAdjacentHTML('beforeend',_anList.slice(from,anLimit).map(anRow).join(''));
+  const b=document.querySelector('.an-more'),left=_anList.length-anLimit;
+  if(b){if(left>0)b.textContent='Load more ('+left+' left)';else b.remove();}
+  anUpdSaveAll();
+}
 function anUpdSaveAll(){
   const b=document.getElementById('anSaveAll');if(!b)return;
   const n=Object.keys(anDraft).filter(id=>anIsDirty(id)&&!anLocked(id)).length;
@@ -5046,13 +5055,40 @@ function fmtDT(v){
 function isTsHdr(h){h=String(h||'').trim().toLowerCase();return h==='timestamp'||h==='created at'||h==='date'||h==='time';}
 function anCol(n){return hdrs.findIndex(h=>h.toLowerCase()===n.toLowerCase());}
 function anYmd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+/* ---- anTasks: built ONCE per data load (cached) instead of on every render. Single pass, no 28k-row temp arrays,
+   link/ts are computed lazily from the row (not stored per task) and repeated strings are shared -> low memory.
+   The cache is dropped automatically 2 min after you leave the Analysis tab. ---- */
+let _anTC=null,_anTM=null,_anTK=null,_anTN=-1,_anFreeT=null,_anLnkC=-1;
+class AnT{
+  constructor(id,lab,qc,qshift,type,pass,shiftRaw,obj,shift,time,day,r){this.id=id;this.lab=lab;this.qc=qc;this.qshift=qshift;this.type=type;this.pass=pass;this.shiftRaw=shiftRaw;this.obj=obj;this.shift=shift;this.time=time;this.day=day;this.r=r;}
+  get link(){return String(this.r[_anLnkC]||'');}
+  get ts(){return this.time?fmt12(new Date(this.time)):'';}
+}
+function anTasksFree(){_anTC=null;_anTM=null;_anTK=null;_anTN=-1;_anFreeT=null;anAllCache=[];_anList=[];}
+function anCacheTick(){   // called on every renderAllSections
+  if(activeLoc!=='__analysis__'){if(_anTC&&!_anFreeT)_anFreeT=setTimeout(anTasksFree,120000);}
+  else if(_anFreeT){clearTimeout(_anFreeT);_anFreeT=null;}
+}
+function anById(id){if(!_anTM){_anTM=new Map();(_anTC||[]).forEach(t=>_anTM.set(t.id,t));}return _anTM.get(id);}
 function anTasks(){
+  if(_anTC&&_anTK===rawRows&&_anTN===rawRows.length)return _anTC;
   const c={id:anCol('Id'),lab:anCol('Labeler Name'),qc:anCol('Qtc Name'),st:anCol('Stage'),pass:anCol('Pass'),at:tsColIdx(hdrs),lnk:anCol('Task Link'),sh:anCol('Shift'),obj:anCol('Object Count')};
-  return Array.from(rawRows.map(r=>{const d=parseTs(r[c.at]);const ok=!!d;const stage=String(r[c.st]||'');
-    return{id:String(r[c.id]||'').trim(),lab:String(r[c.lab]||'').trim(),qc:String(r[c.qc]||'').replace(/\s*\([^)]*\)\s*$/,'').trim(),
-      qshift:({Morning:'M',Night:'N',Overnight:'ON'})[qtcShiftGroup(String(r[c.qc]||'').trim())]||'',type:/lidar/i.test(stage)?'Lidar':'Lane Line',pass:String(r[c.pass]||'').trim(),shiftRaw:(c.sh>=0?String(r[c.sh]||'').trim():''),obj:(c.obj>=0?(v=>isNaN(v)?null:v)(parseFloat(String(r[c.obj]??'').replace(/,/g,''))):null),link:String(r[c.lnk]||''),shift:(v=>/over/.test(v)?'ON':/night/.test(v)?'N':/morn|day/.test(v)?'M':'')(String(r[c.sh]||'').toLowerCase()),time:ok?d.getTime():0,day:ok?anYmd(d):'',ts:ok?fmt12(d):''};
-  }).filter(t=>t.id).reduce((m,t)=>{const o=m.get(t.id);if(!o||t.time>=o.time)m.set(t.id,t);return m;},new Map()).values()) /* ONE row per Task ID: duplicate rows in the source sheet are collapsed (the latest one is kept), so a task is shown and counted once */
-  ;
+  _anLnkC=c.lnk;
+  const SH={Morning:'M',Night:'N',Overnight:'ON'},qcM=new Map(),shM=new Map(),dayM=new Map(),best=new Map();
+  for(let i=0;i<rawRows.length;i++){
+    const r=rawRows[i],id=String(r[c.id]||'').trim();if(!id)continue;
+    const d=parseTs(r[c.at]),time=d?d.getTime():0,o=best.get(id);
+    if(o&&time<o.time)continue;   // ONE row per Task ID: the latest one wins (same rule as before)
+    const rawQc=String(r[c.qc]||'');let q=qcM.get(rawQc);
+    if(!q){q=[rawQc.replace(/\s*\([^)]*\)\s*$/,'').trim(),SH[qtcShiftGroup(rawQc.trim())]||''];qcM.set(rawQc,q);}
+    const rawSh=c.sh>=0?String(r[c.sh]||''):'';let sh=shM.get(rawSh);
+    if(!sh){const v=rawSh.toLowerCase();sh=[rawSh.trim(),/over/.test(v)?'ON':/night/.test(v)?'N':/morn|day/.test(v)?'M':''];shM.set(rawSh,sh);}
+    let day='';if(d){const y=anYmd(d);day=dayM.get(y);if(!day){day=y;dayM.set(y,y);}}
+    const ob=c.obj>=0?parseFloat(String(r[c.obj]??'').replace(/,/g,'')):NaN;
+    best.set(id,new AnT(id,String(r[c.lab]||'').trim(),q[0],q[1],/lidar/i.test(String(r[c.st]||''))?'Lidar':'Lane Line',String(r[c.pass]||'').trim(),c.sh>=0?sh[0]:'',isNaN(ob)?null:ob,sh[1],time,day,r));
+  }
+  _anTC=Array.from(best.values());_anTM=null;_anTK=rawRows;_anTN=rawRows.length;
+  return _anTC;
 }
 const AN_RANK_M=5;   // weight of the overall average when ranking: a name with few tasks is pulled toward it
 function anWScore(cnt,prior){const n=RATES.reduce((s,k)=>s+(cnt[k]||0),0);return n?(anScore(cnt)*n+prior*AN_RANK_M)/(n+AN_RANK_M):0;}
@@ -5096,7 +5132,7 @@ function anMark(id){
   anUpdSaveAll();anUpdBanner();
 }
 function anRowRefresh(id){   // re-draw just this row (fast — no full re-render)
-  const el=document.querySelector('.an-row[data-id="'+id+'"]'),t=anAllCache.find(x=>x.id===id);if(!el||!t)return;
+  const el=document.querySelector('.an-row[data-id="'+id+'"]'),t=anById(id);if(!el||!t)return;
   const tmp=document.createElement('div');tmp.innerHTML=anRow(t);el.replaceWith(tmp.firstElementChild);
   anUpdSaveAll();
 }
@@ -5107,7 +5143,7 @@ function anRow(t){
 function anTyping(id,val){anDraftSet(id,{issue:val});anMark(id);}
 /* auto-grow the Issue box so a long problem is fully visible */
 function anFit(el){if(!el||el.offsetParent===null)return false;el.style.height='auto';const h=el.scrollHeight;if(!h)return false;el.style.height=(h+2)+'px';return true;}
-function anFitAll(force){document.querySelectorAll('textarea.an-iss'+(force?'':':not([data-fit])')).forEach(el=>{if(anFit(el))el.dataset.fit='1';});}
+function anFitAll(force){document.querySelectorAll('textarea.an-iss:not([style*="display:none"])'+(force?'':':not([data-fit])')).forEach(el=>{if(anFit(el))el.dataset.fit='1';});}
 document.addEventListener('input',e=>{const t=e.target;if(t&&t.classList&&t.classList.contains('an-iss'))anFit(t);},true);
 (function(){let q=0;const sched=()=>{if(q)return;q=requestAnimationFrame(()=>{q=0;anFitAll(false);});};
   new MutationObserver(ms=>{for(let i=0;i<ms.length;i++)if(ms[i].addedNodes.length){sched();return;}}).observe(document.body,{childList:true,subtree:true});
@@ -5214,7 +5250,9 @@ function anFinishLoad(cb){
   anRepC=null;anLogLoaded=true;cb&&cb();
   if(Object.keys(anPending).length)anFlush();
 }
-function anResync(){anLoadLog(()=>{if(activeLoc==='__analysis__')renderAnalysis(document.getElementById('mainContent'));});}
+function anSig(){const t=JSON.stringify(anLog);let h=5381;for(let i=0;i<t.length;i++)h=((h<<5)+h+t.charCodeAt(i))|0;return t.length+':'+h;}
+function anResync(){const s0=anSig();anLoadLog(()=>{if(activeLoc==='__analysis__'&&anSig()!==s0)renderAnalysis(document.getElementById('mainContent'));});}   // re-draw only if the sheet really changed
+function anBgSync(){if(!anLogLoaded)return;setTimeout(()=>{if(activeLoc==='__analysis__'&&!anFlushing&&!Object.keys(anDraft).some(anIsDirty))anResync();},400);}
 ['pointerdown','keydown','input'].forEach(ev=>document.addEventListener(ev,()=>{anLastAct=Date.now();},true));
 setInterval(()=>{   // quiet auto-sync every 30s while the Analysis tab is open and you are idle
   if(activeLoc!=='__analysis__'||document.hidden||!anLogLoaded||anFlushing)return;
@@ -5233,7 +5271,7 @@ window.addEventListener('online',()=>{anFlush();});
 setTimeout(()=>{if(Object.keys(anPending).length)anFlush();},5000);   // anything left from a previous session
 /* copy one row for WhatsApp etc.: link + names + ratings + problem — NOT the analyst's name */
 function anCopyText(id){
-  const t=anAllCache.find(x=>x.id===id);if(!t)return '';
+  const t=anById(id);if(!t)return '';
   const v=anCur(id),L=['Task: '+t.id];
   if(t.ts)L.push('Time: '+t.ts);
   {const sh=t.shiftRaw||({M:'Morning',N:'Night',ON:'Overnight'}[t.shift]||'');if(sh)L.push('Shift: '+sh);}
@@ -5268,8 +5306,8 @@ function anBigAlert(id){
 }
 window.addEventListener('beforeunload',ev=>{if(Object.keys(anDraft).some(anIsDirty)||Object.keys(anPending).length){ev.preventDefault();ev.returnValue='';}});
 let _anFresh=false;   /* true = the next render is a NEW result set (filter / view change) → list starts at the top; false = background refresh / Load more → keep the reading position */
-function anSet(k,v){anLimit=300;_anFresh=true;anF[k]=v;renderAnalysis(document.getElementById('mainContent'));}
-function anSetView(v){anLimit=300;_anFresh=true;anView=v;renderAnalysis(document.getElementById('mainContent'));}
+function anSet(k,v){anLimit=100;_anFresh=true;anF[k]=v;renderAnalysis(document.getElementById('mainContent'));}
+function anSetView(v){anLimit=100;_anFresh=true;anView=v;renderAnalysis(document.getElementById('mainContent'));}
 function anOpts(arr,sel,all){return `<option value="">${all}</option>`+arr.map(x=>`<option${x===sel?' selected':''}>${esc(x)}</option>`).join('');}
 /* Ratings view: the date range and the daily trend use the ANALYSIS DATE (when the task was rated), not the task's own date */
 function anADay(t){const l=anLog[t.id];return (l&&(extractDate(l.date)||extractDate(l.ts)))||t.day||'';}
@@ -5308,7 +5346,7 @@ function anPick(k,el,single){const v=el.dataset.v;
   const S=anF[k];S.has(v)?S.delete(v):S.add(v);el.classList.toggle('on',S.has(v));el.querySelector('.dp-cb').textContent=S.has(v)?'✓':'';anDirty=true;}
 function anSrch(k,q){q=q.toLowerCase();document.querySelectorAll('#andp_'+k+' .dp-item').forEach(x=>x.style.display=x.dataset.v.toLowerCase().includes(q)?'':'none');}
 function anClear(k,single){if(single)anF[k]='';else anF[k].clear();anDone();}
-function anDone(){anLimit=300;_anFresh=true;anOpen='';anDirty=false;renderAnalysis(document.getElementById('mainContent'));}
+function anDone(){anLimit=100;_anFresh=true;anOpen='';anDirty=false;renderAnalysis(document.getElementById('mainContent'));}
 document.addEventListener('click',e=>{if(anOpen&&!(e.target.closest&&e.target.closest('.an-fg'))){if(anDirty)anDone();else{anOpen='';document.querySelectorAll('.an-fg .dpanel').forEach(p=>p.classList.remove('open'));}}});
 
 function anChart(rated){
@@ -5364,15 +5402,21 @@ async function anShot(btn){
 }
 function renderAnalysis(mc){
   if(!mc)return;
+  if(!anLogLoaded&&anView==='tasks'){   // open INSTANTLY from the last copy kept in the browser, refresh from the sheet in the background
+    try{const c=JSON.parse(localStorage.getItem('an_log')||'null');
+      if(c&&typeof c==='object'&&Object.keys(c).length){anLog=c;anLogRows=Object.keys(c).map(id=>Object.assign({id},c[id]));anLogLoaded=true;
+        const s0=anSig();anLoadLog(()=>{if(activeLoc==='__analysis__'&&anSig()!==s0)renderAnalysis(document.getElementById('mainContent'));});}
+    }catch(_){}
+  }
   if(!anLogLoaded){mc.innerHTML='<div class="loader"><span class="ltxt">Loading analysis…</span></div>';anLoadLog(()=>{if(activeLoc==='__analysis__')renderAnalysis(mc);});return;}
-  const all=anTasks();anAllCache=all;anRepC=null;const tasks=anFiltered(all);let body='',meta='';
+  const all=anTasks();anAllCache=all;anRepC=null;_anList=[];const tasks=anFiltered(all);let body='',meta='';
   const note=ANALYSIS_API_URL?'':'<div class="an-note">⚠ ANALYSIS_API_URL is empty — ratings are saved in this browser only. Deploy analysis_script.gs and paste its URL to share them.</div>';
   const _sc=mc.querySelector('.tbl-w'),_st=_sc?_sc.scrollTop:0,_wy=window.scrollY;
   const _fresh=_anFresh;_anFresh=false;
   const _al=_fresh?null:mc.querySelector('.an-list'),_alSt=_al?_al.scrollTop:0;let _anc=null;
   if(_al&&_alSt>0){const lt=_al.getBoundingClientRect().top;for(const r of _al.children){const b=r.getBoundingClientRect();if(b.bottom>lt){_anc={id:r.dataset.id,off:b.top-lt};break;}}}
   if(anView==='tasks'){
-    const labs=[...new Set(all.map(t=>t.lab))].sort(),qcs=[...new Set(all.map(t=>t.qc))].sort(),shown=tasks.sort((a,b)=>b.time-a.time).slice(0,anLimit);meta=tasks.length+' tasks';
+    const shown=tasks.sort((a,b)=>b.time-a.time).slice(0,anLimit);_anList=tasks;meta=tasks.length+' tasks';
     body=`<div class="an-bar">${anRange()}${anDD('lab','👤 Labeler',anCount(all,t=>t.lab))}${anDD('qc','🏷 QTC',anCount(all,t=>t.qc))}${anDD('type','Type',anCount(all,t=>t.type))}${anDD('pass','✅ Pass',anCount(all,t=>t.pass))}${anDD('status','Status',['Not analyzed','Analyzed','Has issue'].map(v=>({v})),true)}<input placeholder="Task id / name…" value="${esc(anF.q)}" onchange="anSet('q',this.value)"><button class="preset${anF.mine?' on':''}" onclick="anSet('mine',!anF.mine)">👤 My tasks</button><button id="anSaveAll" class="an-saveall" title="Save all (Ctrl+S)" type="button" disabled onclick="anSaveAll()">💾 Save all</button></div>
       <div class="an-list">`+
       shown.map(anRow).join('')+'</div>'+(tasks.length>anLimit?'<button class="an-more" type="button" onclick="anMore()">Load more ('+(tasks.length-anLimit)+' left)</button>':'');
